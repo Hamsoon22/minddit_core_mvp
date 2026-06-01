@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  password  String
+  role      Role      @default(PROFESSIONAL)
+  sessions  Session[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+enum Role {
+  PROFESSIONAL
+  ADMIN
+}
+
+model Session {
+  id           String          @id @default(cuid())
+  title        String
+  description  String?
+  status       SessionStatus   @default(DRAFT)
+  joinCode     String          @unique
+  scheduledAt  DateTime?
+  createdBy    User            @relation(fields: [createdById], references: [id])
+  createdById  String
+  activities   SessionActivity[]
+  participants Participant[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+enum SessionStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+}
+
+model SessionActivity {
+  id          String       @id @default(cuid())
+  session     Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId   String
+  title       String
+  type        ActivityType
+  durationMin Int          @default(10)
+  content     String?
+  order       Int          @default(0)
+  createdAt   DateTime     @default(now())
+}
+
+enum ActivityType {
+  CHECKIN
+  POLL
+  JOURNAL
+  MEDITATION
+  BREATHING
+  MOVEMENT
+  VIDEO
+  DISCUSSION
+}
+
+model Participant {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId String
+  attended  Boolean  @default(false)
+  joinedAt  DateTime?
+  createdAt DateTime @default(now())
+}
+
+model ContentBlock {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  type        ActivityType
+  durationMin Int          @default(10)
+  content     String?
+  isPublic    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+}

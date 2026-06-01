@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@import "react-big-calendar/lib/css/react-big-calendar.css";
+
+@layer base {
+  :root {
+    --brand: #2d5016;
+  }
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+  }
+}
