@@ -1,53 +1,43 @@
 # Minddit Core
 
-Minddit Core is a digital facilitation platform designed for workshops, group programs, coaching sessions, and mental health interventions.
-
-The platform enables facilitators to create programs, manage participants, run live sessions, and collect insights through a single integrated interface.
+Minddit Core는 워크숍, 교육 프로그램, 그룹 세션 등의 심리·정신건강 프로그램 운영을 위한 통합 관리 플랫폼입니다.프로그램 생성부터 참여자 관리, 실시간 세션 운영, 콘텐츠 관리, 리포트 확인까지 하나의 시스템에서 수행할 수 있도록 설계되었습니다.
 
 ---
 
-## Features
+## 주요 기능
 
-### Dashboard
+### 대시보드
 
-* Program overview
-* Participant statistics
-* Session monitoring
-* Schedule management
+* 프로그램 현황 확인
+* 참여자 통계 확인
+* 일정 및 세션 관리
 
-### Program Management
+### 프로그램 관리
 
-* Create and edit programs
-* Organize activities
-* Track program status
+* 프로그램 생성 및 수정
+* 세션 구성
+* 프로그램 상태 관리
 
-### Participant Management
+### 참여자 관리
 
-* Participant registration
-* Attendance tracking
-* Participant profiles
+* 참여자 등록
+* 참여 현황 확인
+* 참여자 정보 관리
 
-### Content Library
+### 콘텐츠 라이브러리
 
-* Store facilitation materials
-* Reuse activities and resources
-* Centralized content management
+* 프로그램 자료 관리
+* 활동 콘텐츠 저장 및 재사용
 
-### Live Facilitation
+### 세션 운영
 
-* Real-time session control
-* Interactive activities
-* QR-based participant access
-
-### Reporting
-
-* Program analytics
-* Participation summaries
-* Session outcomes
+* 세션 진행 화면
+* 활동 제어
+* 참여자 인터랙션
 
 ---
 
-## Tech Stack
+## 기술 스택
 
 * Next.js 14
 * TypeScript
@@ -58,64 +48,25 @@ The platform enables facilitators to create programs, manage participants, run l
 
 ---
 
-## Project Structure
+## 실행 방법
 
-```text
-src/
-├── app/
-├── components/
-├── hooks/
-├── lib/
-├── types/
-└── prisma/
-```
-
----
-
-## Getting Started
-
-Install dependencies:
+의존성 설치
 
 ```bash
 npm install
 ```
 
-Run development server:
+개발 서버 실행
 
 ```bash
 npm run dev
 ```
 
-Open:
+브라우저에서 아래 주소 접속
 
 ```text
 http://localhost:3000
 ```
-
----
-
-## Roadmap
-
-### MVP
-
-* Dashboard
-* Session Builder
-* Participant Management
-* Content Library
-* Reporting
-
-### Next Phase
-
-* AI-assisted facilitation
-* Automated report generation
-* Real-time collaboration
-* Mobile participant interface
-
----
-
-## Status
-
-🚧 MVP Development In Progress
 
 ---
 
