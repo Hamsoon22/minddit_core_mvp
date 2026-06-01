@@ -1,48 +1,122 @@
-# Mindflow — 정신건강 프로그램 플랫폼
+# Minddit Core
 
-## 시작하기
+Minddit Core is a digital facilitation platform designed for workshops, group programs, coaching sessions, and mental health interventions.
 
-### 1. 의존성 설치
+The platform enables facilitators to create programs, manage participants, run live sessions, and collect insights through a single integrated interface.
+
+---
+
+## Features
+
+### Dashboard
+
+* Program overview
+* Participant statistics
+* Session monitoring
+* Schedule management
+
+### Program Management
+
+* Create and edit programs
+* Organize activities
+* Track program status
+
+### Participant Management
+
+* Participant registration
+* Attendance tracking
+* Participant profiles
+
+### Content Library
+
+* Store facilitation materials
+* Reuse activities and resources
+* Centralized content management
+
+### Live Facilitation
+
+* Real-time session control
+* Interactive activities
+* QR-based participant access
+
+### Reporting
+
+* Program analytics
+* Participation summaries
+* Session outcomes
+
+---
+
+## Tech Stack
+
+* Next.js 14
+* TypeScript
+* Tailwind CSS
+* Prisma
+* NextAuth
+* PostgreSQL
+
+---
+
+## Project Structure
+
+```text
+src/
+├── app/
+├── components/
+├── hooks/
+├── lib/
+├── types/
+└── prisma/
+```
+
+---
+
+## Getting Started
+
+Install dependencies:
+
 ```bash
 npm install
 ```
 
-### 2. 환경변수 설정
-```bash
-cp .env.example .env.local
-# .env.local에 DATABASE_URL, NEXTAUTH_SECRET 등 입력
-```
+Run development server:
 
-### 3. DB 초기화
-```bash
-npm run db:push     # 스키마 적용
-npm run db:seed     # 샘플 데이터 삽입
-```
-
-### 4. 개발 서버 실행
 ```bash
 npm run dev
 ```
 
-→ http://localhost:3000  
-데모 계정: `demo@mindflow.kr` / `password123`
+Open:
 
-## 주요 라우트
+```text
+http://localhost:3000
+```
 
-| 경로 | 설명 |
-|------|------|
-| `/` | 대시보드 홈 |
-| `/sessions` | 세션 목록 |
-| `/sessions/[id]/builder` | 세션 빌더 |
-| `/sessions/[id]/live` | 실시간 세션 운영 |
-| `/participants` | 참여자 관리 |
-| `/library` | 콘텐츠 라이브러리 |
-| `/s/[code]` | 참여자 QR 입장 페이지 |
+---
 
-## 기술 스택
-- **프레임워크**: Next.js 14 (App Router)
-- **스타일**: Tailwind CSS
-- **DB**: PostgreSQL + Prisma ORM
-- **인증**: NextAuth.js
-- **실시간**: Socket.io (hooks/useSocket.ts)
-- **이메일**: Nodemailer
+## Roadmap
+
+### MVP
+
+* Dashboard
+* Session Builder
+* Participant Management
+* Content Library
+* Reporting
+
+### Next Phase
+
+* AI-assisted facilitation
+* Automated report generation
+* Real-time collaboration
+* Mobile participant interface
+
+---
+
+## Status
+
+🚧 MVP Development In Progress
+
+---
+
+© 2026 Minddit Core
