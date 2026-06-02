@@ -8,7 +8,12 @@ const TYPE_LABEL: Record<string, string> = {
 export default function LibraryPage() {
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">콘텐츠 라이브러리</h1>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">콘텐츠 관리</h1>
+        <p className="mt-2 text-sm text-gray-500">
+          콘텐츠 라이브러리를 탐색하고 프로그램에 활용할 자료를 관리하세요.
+        </p>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {mockContentBlocks.map((c) => (
           <div key={c.id} className="bg-white rounded-xl border border-gray-200 p-5">

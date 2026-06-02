@@ -11,3 +11,28 @@
     @apply bg-gray-50 text-gray-900 antialiased;
   }
 }
+
+@layer utilities {
+  @keyframes pageDissolve {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .page-dissolve {
+    animation: pageDissolve 220ms ease-out both;
+    will-change: opacity, transform;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .page-dissolve {
+      animation: none;
+    }
+  }
+}
