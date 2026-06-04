@@ -15,7 +15,7 @@ export default function SessionDetailPage({ params }: { params: { id: string } }
       </div>
       <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">{session.title}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{session.title}</h1>
           {session.description && <p className="text-gray-500 text-sm mt-1">{session.description}</p>}
         </div>
         <div className="flex gap-2">

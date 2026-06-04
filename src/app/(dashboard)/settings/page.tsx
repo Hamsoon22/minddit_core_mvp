@@ -2,7 +2,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">설정</h1>
+        <h1 className="text-2xl font-bold text-gray-900">설정</h1>
         <p className="mt-2 text-sm text-gray-500">
           시스템 및 계정 설정을 관리합니다.
         </p>
@@ -78,7 +78,10 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                <input type="checkbox" defaultChecked />
+                <label className="inline-flex cursor-pointer items-center">
+                  <input type="checkbox" defaultChecked className="peer sr-only" />
+                  <span className="relative h-6 w-11 rounded-full bg-gray-300 transition peer-checked:bg-[#485763] after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition peer-checked:after:translate-x-5" />
+                </label>
               </div>
 
               <div className="flex items-center justify-between">
@@ -91,18 +94,19 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                <input type="checkbox" defaultChecked />
+                <label className="inline-flex cursor-pointer items-center">
+                  <input type="checkbox" defaultChecked className="peer sr-only" />
+                  <span className="relative h-6 w-11 rounded-full bg-gray-300 transition peer-checked:bg-[#485763] after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition peer-checked:after:translate-x-5" />
+                </label>
               </div>
             </div>
           </section>
 
-          <section className="rounded-xl border border-gray-200 bg-white p-6">
-            <div className="flex justify-end">
-              <button className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-700">
-                설정 저장
-              </button>
-            </div>
-          </section>
+          <div className="flex justify-end">
+            <button className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-700">
+              설정 저장
+            </button>
+          </div>
         </div>
       </div>
     </div>

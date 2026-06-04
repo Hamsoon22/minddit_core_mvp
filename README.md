@@ -70,4 +70,4 @@ http://localhost:3000
 
 ---
 
-© 2026 Minddit Core
+© 2026 Minddit Core. All rights reserved.
