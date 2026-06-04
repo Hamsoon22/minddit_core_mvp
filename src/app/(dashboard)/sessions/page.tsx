@@ -1,15 +1,64 @@
-import { mockSessions } from "@/lib/mock";
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  deleteProgramSession,
+  getProgramDateSummary,
+  getProgramSessions,
+  type ProgramSession,
+} from "@/lib/programSessions";
 
 const statusLabel: Record<string, string> = { DRAFT: "초안", SCHEDULED: "예정", ACTIVE: "진행중", COMPLETED: "완료" };
 const statusColor: Record<string, string> = {
-  DRAFT: "bg-gray-100 text-gray-600",
+  DRAFT: "border border-gray-300 bg-transparent text-gray-600",
   SCHEDULED: "bg-blue-50 text-blue-700",
   ACTIVE: "bg-green-50 text-green-700",
   COMPLETED: "bg-gray-50 text-gray-500",
 };
 
+function escapeCsvCell(value: string) {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+function downloadSessionsCsv(sessions: ProgramSession[]) {
+  const header = ["번호", "프로그램 명", "참여자 수", "프로그램 기간"];
+  const rows = sessions.map((session, index) => [
+    String(index + 1),
+    session.title,
+    String(session._count.participants),
+    getProgramDateSummary(session),
+  ]);
+
+  const csv = [header, ...rows]
+    .map((row) => row.map(escapeCsvCell).join(","))
+    .join("\r\n");
+
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `programs-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  window.URL.revokeObjectURL(url);
+}
+
 export default function SessionsPage() {
+  const [sessions, setSessions] = useState<ProgramSession[]>([]);
+
+  useEffect(() => {
+    setSessions(getProgramSessions());
+  }, []);
+
+  function onDeleteSession(id: string) {
+    const ok = window.confirm("정말 삭제 하시겠습니까?");
+    if (!ok) return;
+
+    const deleted = deleteProgramSession(id);
+    if (!deleted) return;
+    setSessions((prev) => prev.filter((session) => session.id !== id));
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -50,26 +99,50 @@ export default function SessionsPage() {
             </svg>
           </button>
 
-          <Link href="/sessions/s1/builder"
-            className="inline-flex h-10 items-center rounded-lg bg-[#485763] px-4 text-sm font-medium text-white transition hover:bg-[#3f4c56]">
+          <button
+            type="button"
+            onClick={() => downloadSessionsCsv(sessions)}
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#417572] px-4 text-sm font-medium text-white transition hover:bg-[#356663]"
+          >
+            엑셀 다운
+          </button>
+
+          <Link
+            href="/sessions/new"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#485763] px-4 text-sm font-medium text-white transition hover:bg-[#3f4c56]"
+          >
             + 새 프로그램
           </Link>
         </div>
       </div>
       <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-        {mockSessions.map((s) => (
-          <Link key={s.id} href={`/sessions/${s.id}`}
-            className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition">
-            <div>
-              <p className="font-medium text-gray-900 text-sm">{s.title}</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                참여자 {s._count.participants}명 · {new Date(s.createdAt).toLocaleDateString("ko-KR")} 생성
+        {sessions.map((s) => (
+          <div key={s.id} className="flex items-center justify-between gap-3 px-6 py-4 hover:bg-gray-50 transition">
+            <Link href={`/sessions/${s.id}`} className="min-w-0 flex-1">
+              <p className="font-bold text-gray-900 text-base">{s.title}</p>
+              <p className="text-sm text-gray-400 mt-0.5">
+                참여자 {s._count.participants}명 · {getProgramDateSummary(s)}
               </p>
+            </Link>
+
+            <div className="flex items-center gap-2">
+              <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColor[s.status]}`}>
+                {statusLabel[s.status]}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => onDeleteSession(s.id)}
+                aria-label="프로그램 삭제"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
             </div>
-            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColor[s.status]}`}>
-              {statusLabel[s.status]}
-            </span>
-          </Link>
+          </div>
         ))}
       </div>
     </div>

@@ -1,59 +1,220 @@
-import { mockSessions } from "@/lib/mock";
-import { notFound } from "next/navigation";
-import Link from "next/link";
+"use client";
 
-export default function SessionDetailPage({ params }: { params: { id: string } }) {
-  const session = mockSessions.find(s => s.id === params.id);
-  if (!session) notFound();
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { getProgramSessionById, type ProgramSession } from "@/lib/programSessions";
+import type { SessionActivity } from "@/types/activity";
+import { getActivityTypeMeta } from "@/lib/contentCatalog";
+
+const statusLabel: Record<string, string> = {
+  DRAFT: "초안",
+  SCHEDULED: "예정",
+  ACTIVE: "진행중",
+  COMPLETED: "완료",
+};
+
+const statusColor: Record<string, string> = {
+  DRAFT: "border border-gray-300 bg-transparent text-gray-600",
+  SCHEDULED: "bg-blue-50 text-blue-700",
+  ACTIVE: "bg-green-50 text-green-700",
+  COMPLETED: "bg-gray-50 text-gray-500",
+};
+
+function formatDate(date?: Date | null) {
+  if (!date) return "-";
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return "-";
+  const yyyy = parsed.getFullYear();
+  const mm = String(parsed.getMonth() + 1).padStart(2, "0");
+  const dd = String(parsed.getDate()).padStart(2, "0");
+  return `${yyyy}.${mm}.${dd}`;
+}
+
+function formatDateText(dateText?: string) {
+  if (!dateText) return "-";
+  const direct = dateText.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (direct) {
+    return `${direct[1]}.${direct[2].padStart(2, "0")}.${direct[3].padStart(2, "0")}`;
+  }
+
+  const parsed = new Date(dateText);
+  if (Number.isNaN(parsed.getTime())) return "-";
+  const yyyy = parsed.getFullYear();
+  const mm = String(parsed.getMonth() + 1).padStart(2, "0");
+  const dd = String(parsed.getDate()).padStart(2, "0");
+  return `${yyyy}.${mm}.${dd}`;
+}
+
+export default function SessionDetailViewPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
+  const [session, setSession] = useState<ProgramSession | null>(null);
+  const [selectedSectionId, setSelectedSectionId] = useState<string>("");
+
+  useEffect(() => {
+    const found = getProgramSessionById(params.id);
+    setSession(found);
+
+    if (!found) return;
+    const sections = found.scheduleItems.length > 0 ? found.scheduleItems : [{ id: "default", label: "기본 세션" }];
+    setSelectedSectionId(sections[0].id);
+  }, [params.id]);
+
+  const sections = useMemo(
+    () => (session && session.scheduleItems.length > 0 ? session.scheduleItems : [{ id: "default", label: "기본 세션" }]),
+    [session]
+  );
+
+  const sectionActivities = useMemo(() => {
+    if (!session) return {} as Record<string, SessionActivity[]>;
+
+    const map: Record<string, SessionActivity[]> = {};
+    sections.forEach((section, index) => {
+      const stored = session.scheduleActivities?.[section.id] ?? [];
+      if (stored.length > 0) {
+        map[section.id] = stored;
+        return;
+      }
+      if (index === 0) {
+        map[section.id] = session.activities ?? [];
+        return;
+      }
+      map[section.id] = [];
+    });
+
+    return map;
+  }, [session, sections]);
+
+  const currentActivities = selectedSectionId ? sectionActivities[selectedSectionId] ?? [] : [];
+  const totalMin = currentActivities.reduce((sum, activity) => sum + activity.durationMin, 0);
+
+  function getSectionTabLabel(section: ProgramSession["scheduleItems"][number] | { id: string; label: string }) {
+    if (!session) return section.label;
+
+    if (session.scheduleType === "DATE_SPECIFIC") {
+      const date = "date" in section ? section.date : undefined;
+      return `${section.label}(${formatDateText(date)})`;
+    }
+
+    if (session.scheduleType === "WEEKLY") {
+      const weekStart = "weekStart" in section ? section.weekStart : undefined;
+      const weekEnd = "weekEnd" in section ? section.weekEnd : undefined;
+      return `${section.label}(${formatDateText(weekStart)} ~ ${formatDateText(weekEnd)})`;
+    }
+
+    return section.label;
+  }
+
+  const selectedSection = sections.find((section) => section.id === selectedSectionId) ?? sections[0];
+  const selectedSectionLabel = selectedSection ? getSectionTabLabel(selectedSection) : "1회차";
+
+  if (!session) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-gray-500">프로그램을 찾을 수 없습니다.</p>
+        <button
+          onClick={() => router.push("/sessions")}
+          className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700"
+        >
+          목록으로 이동
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link href="/sessions" className="hover:text-gray-900">세션</Link>
-        <span>/</span>
-        <span className="text-gray-900">{session.title}</span>
-      </div>
-      <div className="flex items-start justify-between mb-8">
+    <div className="space-y-6">
+      <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{session.title}</h1>
-          {session.description && <p className="text-gray-500 text-sm mt-1">{session.description}</p>}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => router.push("/sessions")}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-xl font-semibold leading-none text-gray-900 hover:bg-gray-50"
+            >
+              ←
+            </button>
+            <h1 className="text-2xl font-bold text-gray-900">{session.title}</h1>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusColor[session.status]}`}>
+              {statusLabel[session.status]}
+            </span>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Link href={`/sessions/${session.id}/builder`}
-            className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition">
-            빌더 편집
+
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/sessions/${session.id}/setup`}
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+          >
+            프로그램 편집
           </Link>
-          <Link href={`/sessions/${session.id}/live`}
-            className="px-4 py-2 bg-brand-700 text-white rounded-lg text-sm hover:bg-brand-600 transition">
-            세션 시작
+          <Link
+            href={`/sessions/${session.id}/builder`}
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#485763] px-4 text-sm font-medium text-white transition hover:bg-[#3f4c56]"
+          >
+            활동 편집
           </Link>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">활동 ({session.activities.length})</h2>
+
+      <div className="space-y-4">
+        <div className="rounded-lg border border-[#292929] bg-[#292929] px-4 py-3 text-sm text-white">
+          <span className="font-semibold">프로그램 기간:</span> {formatDate(session.startDate)} ~ {formatDate(session.endDate)}
+        </div>
+
+        {sections.length > 1 && (
+          <div className="flex flex-wrap gap-2">
+            {sections.map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                onClick={() => setSelectedSectionId(section.id)}
+                className={
+                  selectedSectionId === section.id
+                    ? "rounded-lg border border-[#485763] bg-[#485763] px-3 py-1.5 text-xs font-medium text-white"
+                    : "rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                }
+              >
+                {getSectionTabLabel(section)}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-base font-bold text-gray-900">{selectedSectionLabel}</h2>
+          <span className="text-sm font-medium text-gray-600">총 소요시간 {totalMin}분</span>
+        </div>
+
+        {currentActivities.length === 0 ? (
+          <div className="rounded-lg border-2 border-dashed border-gray-200 py-12 text-center">
+            <p className="text-sm text-gray-400">등록된 활동이 없습니다. 활동 편집에서 추가해 주세요.</p>
+          </div>
+        ) : (
           <ol className="space-y-2">
-            {session.activities.map((a, i) => (
-              <li key={a.id} className="flex items-center gap-3 text-sm">
-                <span className="w-6 h-6 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center text-xs font-medium flex-shrink-0">{i + 1}</span>
-                <span className="text-gray-800">{a.title}</span>
-                <span className="text-gray-400 ml-auto">{a.durationMin}분</span>
+            {currentActivities.map((activity, index) => (
+              <li key={activity.id} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    const typeMeta = getActivityTypeMeta(activity.type);
+                    return (
+                      <>
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-xs font-medium text-gray-500">{index + 1}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${typeMeta.color}`}>
+                    {typeMeta.label}
+                  </span>
+                  <p className="flex-1 text-sm font-semibold text-gray-900">{activity.title}</p>
+                  <p className="text-xs text-gray-500">{activity.durationMin}분</p>
+                      </>
+                    );
+                  })()}
+                </div>
               </li>
             ))}
           </ol>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">참여자 ({session.participants.length})</h2>
-          <ul className="space-y-2">
-            {session.participants.map((p) => (
-              <li key={p.id} className="flex items-center gap-2 text-sm">
-                <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600">{p.name[0]}</div>
-                <span className="text-gray-800">{p.name}</span>
-                <span className={`ml-auto text-xs ${p.attended ? "text-green-600" : "text-gray-400"}`}>{p.attended ? "참여" : "미참여"}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ model User {
   password  String
   role      Role      @default(PROFESSIONAL)
   sessions  Session[]
+  organizationSetting OrganizationSetting?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -28,14 +29,36 @@ model Session {
   title        String
   description  String?
   status       SessionStatus   @default(DRAFT)
+  mode         ProgramMode     @default(HYBRID)
+  scheduleType ScheduleType    @default(WEEKLY)
   joinCode     String          @unique
   scheduledAt  DateTime?
+  startDate    DateTime?
+  endDate      DateTime?
+  institutionName       String?
+  institutionAddress    String?
+  institutionDirections String?
+  institutionPhone      String?
+  institutionEmail      String?
   createdBy    User            @relation(fields: [createdById], references: [id])
   createdById  String
   activities   SessionActivity[]
+  schedules    ProgramSchedule[]
   participants Participant[]
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+}
+
+enum ProgramMode {
+  IN_PERSON
+  ONLINE
+  HYBRID
+}
+
+enum ScheduleType {
+  WEEKLY
+  DATE_SPECIFIC
+  MONTHLY
 }
 
 enum SessionStatus {
@@ -87,5 +110,54 @@ model ContentBlock {
   durationMin Int          @default(10)
   content     String?
   isPublic    Boolean      @default(true)
+  scheduleItems ProgramScheduleItem[]
   createdAt   DateTime     @default(now())
+}
+
+model ProgramSchedule {
+  id        String                @id @default(cuid())
+  session   Session               @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId String
+  label     String
+  date      DateTime?
+  month     Int?
+  order     Int                   @default(0)
+  items     ProgramScheduleItem[]
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  @@index([sessionId, order])
+}
+
+model ProgramScheduleItem {
+  id                  String          @id @default(cuid())
+  schedule            ProgramSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  scheduleId          String
+  contentBlock        ContentBlock?   @relation(fields: [contentBlockId], references: [id])
+  contentBlockId      String?
+  titleSnapshot       String
+  typeSnapshot        ActivityType
+  durationMinSnapshot Int
+  contentSnapshot     String?
+  order               Int             @default(0)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@index([scheduleId, order])
+}
+
+model OrganizationSetting {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String   @unique
+  name        String?
+  description String?
+  address     String?
+  directions  String?
+  phone       String?
+  email       String?
+  enableEmailNotification Boolean @default(true)
+  enableAutoBackup       Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
