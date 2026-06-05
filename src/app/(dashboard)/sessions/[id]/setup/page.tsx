@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   deleteProgramSession,
@@ -9,7 +9,7 @@ import {
   type LocalScheduleItem,
   type ProgramSession,
 } from "@/lib/programSessions";
-import type { ScheduleType } from "@/types/session";
+import type { ProgramMode, ScheduleType } from "@/types/session";
 
 const DRAFT_CREATE_GUARD_KEY = "mindflow.new-session-create-guard";
 const DRAFT_CREATED_ID_KEY = "mindflow.new-session-created-id";
@@ -28,6 +28,14 @@ const SCHEDULE_TYPE_LABEL: Record<ScheduleType, string> = {
   WEEKLY: "주별",
   MONTHLY: "월별",
 };
+
+const MODE_LABEL: Record<ProgramMode, string> = {
+  IN_PERSON: "대면",
+  ONLINE: "비대면",
+  HYBRID: "대면+비대면",
+};
+
+const EXPERT_OPTIONS = ["서윤희", "김서연", "박정민", "이현우"];
 
 function formatDate(dateText?: string) {
   if (!dateText) return "-";
@@ -89,6 +97,55 @@ function DatePickerRow({
       </div>
       <input
         type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onClick={openNativePicker}
+        min={min}
+        max={max}
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+      />
+    </div>
+  );
+}
+
+function MonthPickerRow({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+}: {
+  label: string;
+  value: string;
+  onChange: (next: string) => void;
+  min?: string;
+  max?: string;
+}) {
+  const displayValue = value
+    ? (() => {
+        const [year, month] = value.split("-");
+        if (!year || !month) return "0000년.00월";
+        return `${year}년.${month}월`;
+      })()
+    : "0000년.00월";
+
+  return (
+    <div className="relative rounded-lg border border-gray-300 bg-white px-3">
+      <div className="flex h-11 items-center justify-between gap-3">
+        <p className="shrink-0 text-sm text-gray-700">
+          <span className="opacity-50">{label}</span> {displayValue}
+        </p>
+        <span className="text-gray-500" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 2V5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M16 2V5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <rect x="3" y="4" width="18" height="17" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M3 9.5H21" stroke="currentColor" strokeWidth="1.8" />
+          </svg>
+        </span>
+      </div>
+      <input
+        type="month"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onClick={openNativePicker}
@@ -293,7 +350,13 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
   const router = useRouter();
   const [session, setSession] = useState<ProgramSession | null>(null);
   const [title, setTitle] = useState("");
+  const [mode, setMode] = useState<ProgramMode>("IN_PERSON");
+  const [modeDropdownOpen, setModeDropdownOpen] = useState(false);
+  const modeDropdownRef = useRef<HTMLDivElement>(null);
   const [description, setDescription] = useState("");
+  const [selectedExperts, setSelectedExperts] = useState<string[]>(["서윤희"]);
+  const [expertDropdownOpen, setExpertDropdownOpen] = useState(false);
+  const expertDropdownRef = useRef<HTMLDivElement>(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [scheduleType, setScheduleType] = useState<ScheduleType>("DATE_SPECIFIC");
@@ -303,7 +366,16 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
     const found = getProgramSessionById(params.id);
     setSession(found);
     setTitle(found?.title ?? "");
+    setMode((found?.mode as ProgramMode) ?? "IN_PERSON");
     setDescription(found?.description ?? "");
+    setSelectedExperts(
+      found?.expertName
+        ? found.expertName
+            .split(",")
+            .map((name) => name.trim())
+            .filter(Boolean)
+        : ["서윤희"]
+    );
     setStartDate(toDateInput(found?.startDate));
     setEndDate(toDateInput(found?.endDate));
 
@@ -337,6 +409,20 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
     window.sessionStorage.removeItem(DRAFT_CREATED_ID_KEY);
   }, []);
 
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (expertDropdownRef.current && !expertDropdownRef.current.contains(e.target as Node)) {
+        setExpertDropdownOpen(false);
+      }
+      if (modeDropdownRef.current && !modeDropdownRef.current.contains(e.target as Node)) {
+        setModeDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const invalidRange = Boolean(startDate && endDate && new Date(startDate) > new Date(endDate));
 
   useEffect(() => {
@@ -346,7 +432,9 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
     const timeoutId = window.setTimeout(() => {
       updateProgramSession(session.id, {
         title: title.trim() || session.title,
+        mode,
         description: description.trim() || null,
+        expertName: selectedExperts.join(", "),
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
         scheduledAt: startDate ? new Date(startDate) : null,
@@ -359,7 +447,9 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
   }, [
     session?.id,
     title,
+    mode,
     description,
+    selectedExperts,
     startDate,
     endDate,
     scheduleType,
@@ -390,6 +480,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
 
   const canCreate =
     title.trim().length > 0 &&
+    selectedExperts.length > 0 &&
     Boolean(startDate) &&
     Boolean(endDate) &&
     !invalidRange &&
@@ -426,6 +517,23 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
   }
 
   function onChangeScheduleItem(id: string, patch: Partial<DraftScheduleItem>) {
+    const targetIndex = scheduleItems.findIndex((item) => item.id === id);
+    if (targetIndex === 0) {
+      if (scheduleType === "DATE_SPECIFIC" && patch.date) {
+        setStartDate(patch.date);
+      }
+      if (scheduleType === "WEEKLY" && patch.weekStart) {
+        setStartDate(patch.weekStart);
+      }
+      if (scheduleType === "MONTHLY") {
+        const nextYear = patch.year ?? scheduleItems[targetIndex]?.year;
+        const nextMonth = patch.month ?? scheduleItems[targetIndex]?.month;
+        if (nextYear && nextMonth) {
+          setStartDate(`${nextYear}-${String(nextMonth).padStart(2, "0")}-01`);
+        }
+      }
+    }
+
     setScheduleItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, ...patch } : item))
     );
@@ -455,6 +563,20 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
     );
   }
 
+  function onToggleExpert(name: string) {
+    setSelectedExperts((prev) => {
+      if (prev.includes(name)) {
+        return prev.length === 1 ? prev : prev.filter((item) => item !== name);
+      }
+      return [...prev, name];
+    });
+  }
+
+  function onSelectMode(nextMode: ProgramMode) {
+    setMode(nextMode);
+    setModeDropdownOpen(false);
+  }
+
   function onCancel() {
     if (!session) {
       router.push("/sessions");
@@ -463,6 +585,11 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
 
     if (session.status === "DRAFT") {
       deleteProgramSession(session.id);
+      window.dispatchEvent(
+        new CustomEvent("minddit:toast", {
+          detail: { message: "삭제되었습니다.", tone: "error" },
+        })
+      );
       router.push("/sessions");
       return;
     }
@@ -477,7 +604,9 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
 
     updateProgramSession(session.id, {
       title: title.trim(),
+      mode,
       description: description.trim() || null,
+      expertName: selectedExperts.join(", "),
       startDate: new Date(startDate),
       endDate: new Date(endDate),
       scheduledAt: new Date(startDate),
@@ -485,6 +614,12 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
       scheduleItems: toLocalScheduleItems(scheduleItems, scheduleType),
       status: isDraft ? "SCHEDULED" : session.status,
     });
+
+    window.dispatchEvent(
+      new CustomEvent("minddit:toast", {
+        detail: { message: isDraft ? "생성되었습니다." : "저장되었습니다.", tone: "success" },
+      })
+    );
 
     router.push(isDraft ? `/sessions/${session.id}/builder` : `/sessions/${session.id}`);
   }
@@ -559,27 +694,129 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
       </div>
 
       <div className="mb-6 space-y-4">
-        <div>
-          <label className="mb-2 block text-sm font-bold text-gray-700">
-            프로그램 명 <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="h-11 w-full rounded-lg border border-gray-300 px-4 text-sm outline-none focus:border-gray-500"
-          />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-sm font-bold text-gray-700">
+              프로그램 명 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="h-11 w-full rounded-lg border border-gray-300 px-4 text-sm outline-none focus:border-gray-500"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-bold text-gray-700">
+              진행 방식 <span className="text-red-500">*</span>
+            </label>
+            <div className="relative" ref={modeDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setModeDropdownOpen((prev) => !prev)}
+                className="relative h-11 w-full rounded-lg border border-black bg-white px-3 pr-11 text-left text-sm text-gray-700"
+              >
+                {MODE_LABEL[mode]}
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 text-gray-900 transition-transform ${modeDropdownOpen ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                >
+                  <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+
+              {modeDropdownOpen && (
+                <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white p-1 shadow-lg">
+                  {(Object.keys(MODE_LABEL) as ProgramMode[]).map((modeKey) => {
+                    const checked = mode === modeKey;
+                    return (
+                      <button
+                        key={modeKey}
+                        type="button"
+                        onClick={() => onSelectMode(modeKey)}
+                        className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm ${checked ? "bg-gray-100 text-gray-900" : "text-gray-700 hover:bg-gray-50"}`}
+                      >
+                        <span>{MODE_LABEL[modeKey]}</span>
+                        {checked && <span className="text-xs font-bold">선택</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div>
-          <label className="mb-2 block text-sm font-bold text-gray-700">설명</label>
-          <textarea
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-gray-500"
-            placeholder="프로그램 설명을 입력하세요"
-          />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-sm font-bold text-gray-700">설명</label>
+            <textarea
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-gray-500"
+              placeholder="프로그램 설명을 입력하세요"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-bold text-gray-700">
+              전문가 선택 <span className="text-red-500">*</span>
+            </label>
+            <div className="relative" ref={expertDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setExpertDropdownOpen((prev) => !prev)}
+                className="relative h-11 w-full rounded-lg border border-black bg-white px-3 pr-11 text-left text-sm text-gray-700"
+              >
+                {selectedExperts.length > 0 ? `${selectedExperts.length}명 선택됨` : "전문가를 선택하세요"}
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 text-gray-900 transition-transform ${expertDropdownOpen ? "rotate-180" : ""}`}
+                  aria-hidden="true"
+                >
+                  <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+
+              {expertDropdownOpen && (
+                <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white p-1 shadow-lg">
+                  {EXPERT_OPTIONS.map((expert) => {
+                    const checked = selectedExperts.includes(expert);
+                    return (
+                      <button
+                        key={expert}
+                        type="button"
+                        onClick={() => onToggleExpert(expert)}
+                        className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm ${checked ? "bg-gray-100 text-gray-900" : "text-gray-700 hover:bg-gray-50"}`}
+                      >
+                        <span>{expert} 전문가</span>
+                        {checked && <span className="text-xs font-bold">선택</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="mt-2 min-h-[28px] flex flex-wrap gap-2">
+              {selectedExperts.map((expert) => (
+                <span
+                  key={expert}
+                  className="inline-flex items-center rounded-full border border-gray-300 bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700"
+                >
+                  {expert}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div>
@@ -604,36 +841,41 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
         </div>
       </div>
 
+      <div className="my-10 border-t border-gray-200" />
+
       <div className="mb-6 space-y-4">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-bold text-gray-900">{setupTitle} ({scheduleItems.length}개)</h2>
-          <div className="grid grid-cols-3 gap-2">
-            {(Object.keys(SCHEDULE_TYPE_LABEL) as ScheduleType[]).map((type) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => onChangeScheduleType(type)}
-                className={
-                  scheduleType === type
-                    ? "rounded-lg border border-[#485763] bg-[#485763] px-3 py-1.5 text-xs font-medium text-white"
-                    : "rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                }
-              >
-                {SCHEDULE_TYPE_LABEL[type]}
-              </button>
-            ))}
-          </div>
         </div>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-bold text-gray-700">{SCHEDULE_TYPE_LABEL[scheduleType]} 섹션</p>
+            <div className="flex items-center gap-3">
+              <p className="text-sm font-bold text-gray-700">{SCHEDULE_TYPE_LABEL[scheduleType]} 섹션</p>
+              <div className="flex items-center gap-2">
+                {(Object.keys(SCHEDULE_TYPE_LABEL) as ScheduleType[]).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => onChangeScheduleType(type)}
+                    className={
+                      scheduleType === type
+                        ? "rounded-lg border border-[#485763] bg-[#485763] px-3 py-1.5 text-xs font-medium text-white"
+                        : "rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    }
+                  >
+                    {SCHEDULE_TYPE_LABEL[type]}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button
               type="button"
               onClick={onAddScheduleItem}
-              className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-sm text-gray-700 hover:bg-gray-100"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[#485763] text-lg leading-none text-white transition hover:bg-[#3f4c56]"
+              aria-label="섹션 추가"
             >
-              +
+              <span className="-translate-y-[1px]">+</span>
             </button>
           </div>
 
@@ -644,7 +886,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
                 <button
                   type="button"
                   onClick={() => onRemoveScheduleItem(item.id)}
-                  className="rounded-md border border-gray-300 px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-40"
+                  className="rounded-md border border-red-300 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-100 disabled:opacity-40"
                   disabled={scheduleItems.length <= 1}
                 >
                   -
@@ -657,7 +899,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
                     label="일자"
                     value={item.date}
                     onChange={(next) => onChangeScheduleItem(item.id, { date: next })}
-                    min={startDate || undefined}
+                    min={index === 0 ? undefined : startDate || undefined}
                     max={endDate || undefined}
                   />
                 </div>
@@ -670,7 +912,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
                       label="시작일"
                       value={item.weekStart}
                       onChange={(next) => onChangeScheduleItem(item.id, { weekStart: next })}
-                      min={startDate || undefined}
+                      min={index === 0 ? undefined : startDate || undefined}
                       max={endDate || undefined}
                     />
                   </div>
@@ -688,23 +930,18 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
 
               {scheduleType === "MONTHLY" && (
                 <div>
-                  <label className="mb-1 block text-xs font-bold text-gray-600">
-                    월 선택 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="month"
+                  <MonthPickerRow
+                    label="월별"
                     value={monthValueFromItem(item)}
-                    onChange={(e) => {
-                      const [year, month] = e.target.value.split("-");
+                    onChange={(next) => {
+                      const [year, month] = next.split("-");
                       onChangeScheduleItem(item.id, {
                         year: year || "",
                         month: month || "",
                       });
                     }}
-                    onClick={openNativePicker}
-                    min={startDate ? startDate.slice(0, 7) : undefined}
+                    min={index === 0 ? undefined : startDate ? startDate.slice(0, 7) : undefined}
                     max={endDate ? endDate.slice(0, 7) : undefined}
-                    className="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-gray-500"
                   />
                 </div>
               )}

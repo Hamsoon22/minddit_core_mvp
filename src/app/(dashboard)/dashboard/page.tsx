@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import RandomQuoteBlock from "@/components/dashboard/RandomQuoteBlock";
 import ProgramOverviewSection from "@/components/dashboard/ProgramOverviewSection";
+import HomeGreeting from "@/components/dashboard/HomeGreeting";
 
 const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/1BvQjBJpyiSR-VipF4fj3nDzSY2vA4RXfIb3GUTwKllk/gviz/tq?tqx=out:csv&sheet=Sheet1";
@@ -120,9 +121,9 @@ export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   const quotes = await getQuotes();
 
-  const displayName = (session?.user?.name ?? "데모")
+  const fallbackName = (session?.user?.name ?? "서윤희")
     .replace(/\s*전문가$/, "")
-    .trim() || "데모";
+    .trim() || "서윤희";
   const selectedQuoteIndex = quotes.length > 0
     ? Math.floor(Math.random() * quotes.length)
     : 0;
@@ -131,9 +132,7 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       <section className="flex items-start justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-medium text-gray-900">
-            <span className="font-bold">{displayName} 전문가님,</span>  반갑습니다.
-          </h1>
+          <HomeGreeting fallbackName={fallbackName} />
           <RandomQuoteBlock quotes={quotes} selectedIndex={selectedQuoteIndex} />
         </div>
 

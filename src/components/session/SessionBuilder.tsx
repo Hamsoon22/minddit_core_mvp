@@ -75,6 +75,12 @@ function formatDate(date?: Date | null) {
   return `${yyyy}.${mm}.${dd}`;
 }
 
+function getModeLabel(mode?: ProgramSession["mode"] | null) {
+  if (mode === "ONLINE") return "비대면";
+  if (mode === "HYBRID") return "대면+비대면";
+  return "대면";
+}
+
 function SortableActivityItem({
   activity,
   index,
@@ -105,7 +111,7 @@ function SortableActivityItem({
         ☰
       </button>
       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-xs font-medium text-gray-500">{index + 1}</span>
-      <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${typeInfo.color}`}>{typeInfo.label}</span>
+      <span className={`inline-flex w-[56px] shrink-0 justify-center rounded-full px-2 py-0.5 text-xs font-medium ${typeInfo.color}`}>{typeInfo.label}</span>
       <span className="flex-1 text-sm font-medium text-gray-800">{activity.title}</span>
       <span className="text-xs text-gray-400">{activity.durationMin}분</span>
       <button
@@ -156,6 +162,7 @@ export default function SessionBuilder({ session, onSaveActivities }: Props) {
   const currentActivities = scheduleActivities[selectedSectionId] ?? [];
   const totalMin = currentActivities.reduce((sum, activity) => sum + activity.durationMin, 0);
   const selectedSection = scheduleSections.find((section) => section.id === selectedSectionId) ?? scheduleSections[0];
+  const participantCount = session._count?.participants ?? session.participants?.length ?? 0;
 
   function getSectionLabel(section: ProgramSession["scheduleItems"][number] | { id: string; label: string }) {
     if (session.scheduleType === "DATE_SPECIFIC") {
@@ -254,6 +261,11 @@ export default function SessionBuilder({ session, onSaveActivities }: Props) {
                 activities: flattenedActivities,
                 scheduleActivities,
               });
+              window.dispatchEvent(
+                new CustomEvent("minddit:toast", {
+                  detail: { message: "저장되었습니다.", tone: "success" },
+                })
+              );
               router.push(`/sessions/${session.id}`);
             }}
             className="inline-flex h-10 items-center justify-center rounded-lg bg-[#485763] px-4 text-sm font-medium text-white transition hover:bg-[#3f4c56]"
@@ -265,7 +277,20 @@ export default function SessionBuilder({ session, onSaveActivities }: Props) {
 
       <div className="mb-4 space-y-4">
         <div className="rounded-lg border border-[#292929] bg-[#292929] px-4 py-3 text-sm text-white">
-          <span className="font-semibold">프로그램 기간:</span> {formatDate(session.startDate)} ~ {formatDate(session.endDate)}
+          <div className="flex items-center justify-between gap-3">
+            <p><span className="font-bold">프로그램 기간</span> {formatDate(session.startDate)} ~ {formatDate(session.endDate)}</p>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-xs font-medium text-white">
+                참여자수 {participantCount}명
+              </span>
+              <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-xs font-medium text-white">
+                {getModeLabel(session.mode)}
+              </span>
+              <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-xs font-medium text-white">
+                {(session.expertName ?? "서윤희")} 전문가
+              </span>
+            </div>
+          </div>
         </div>
 
         {scheduleSections.length > 1 && (
@@ -293,7 +318,7 @@ export default function SessionBuilder({ session, onSaveActivities }: Props) {
           <div className="min-h-64 rounded-xl border border-gray-200 bg-white p-6">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-bold text-gray-900">{selectedSectionText}</h2>
-              <span className="text-sm font-medium text-gray-600">총 소요시간 {totalMin}분</span>
+              <span className="text-sm font-medium text-gray-600">총 소요시간 <span className="font-bold">{totalMin}분</span></span>
             </div>
             {currentActivities.length === 0 ? (
               <div className="flex h-40 items-center justify-center rounded-lg border-2 border-dashed border-gray-200">

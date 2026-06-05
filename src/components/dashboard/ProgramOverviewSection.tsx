@@ -6,7 +6,7 @@ import SchedulePanel from "@/components/dashboard/SchedulePanel";
 import { getProgramSessions, type ProgramSession } from "@/lib/programSessions";
 
 const statusLabel: Record<string, string> = {
-  DRAFT: "초안",
+  DRAFT: "임시 저장",
   SCHEDULED: "예정",
   ACTIVE: "진행중",
   COMPLETED: "완료",

@@ -4,6 +4,21 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 
+const defaultSettings = {
+  name: "",
+  description: "",
+  address: "",
+  directions: "",
+  phone: "",
+  email: "",
+  enableEmailNotification: true,
+  enableAutoBackup: true,
+};
+
+function hasDatabaseConfig() {
+  return Boolean(process.env.DATABASE_URL);
+}
+
 const settingsSchema = z.object({
   name: z.string().optional(),
   description: z.string().optional(),
@@ -16,6 +31,8 @@ const settingsSchema = z.object({
 });
 
 async function resolveUserId() {
+  if (!hasDatabaseConfig()) return "local-user";
+
   const session = await getServerSession(authOptions);
   if (session?.user?.id) return session.user.id;
 
@@ -24,30 +41,40 @@ async function resolveUserId() {
 }
 
 export async function GET() {
+  if (!hasDatabaseConfig()) {
+    return NextResponse.json(defaultSettings);
+  }
+
   const userId = await resolveUserId();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!userId) return NextResponse.json(defaultSettings);
 
   const setting = await db.organizationSetting.findUnique({ where: { userId } });
 
-  return NextResponse.json(
-    setting ?? {
-      name: "",
-      description: "",
-      address: "",
-      directions: "",
-      phone: "",
-      email: "",
-      enableEmailNotification: true,
-      enableAutoBackup: true,
-    }
-  );
+  return NextResponse.json(setting ?? defaultSettings);
 }
 
 export async function PATCH(req: Request) {
-  const userId = await resolveUserId();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const body = settingsSchema.parse(await req.json());
+
+  if (!hasDatabaseConfig()) {
+    return NextResponse.json({
+      ...defaultSettings,
+      ...body,
+      email: body.email || "",
+    });
+  }
+
+  const userId = await resolveUserId();
+  if (!userId) {
+    return NextResponse.json(
+      {
+        ...defaultSettings,
+        ...body,
+        email: body.email || "",
+      },
+      { status: 200 }
+    );
+  }
 
   const updated = await db.organizationSetting.upsert({
     where: { userId },

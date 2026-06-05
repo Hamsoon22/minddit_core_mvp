@@ -6,6 +6,7 @@ export interface Session {
   id: string;
   title: string;
   description?: string | null;
+  expertName?: string | null;
   status: SessionStatus;
   mode?: ProgramMode;
   scheduleType?: ScheduleType;

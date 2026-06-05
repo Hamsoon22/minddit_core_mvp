@@ -146,6 +146,9 @@ export default function SchedulePanel({
 
 function StatusBadge({ status }: { status: string }) {
   const label =
+    status === "DRAFT"
+      ? "임시 저장"
+      :
     status === "SCHEDULED"
       ? "예정"
       : status === "COMPLETED"

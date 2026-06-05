@@ -4,7 +4,8 @@ import { mockSessions } from "@/lib/mock";
 import type { Session } from "@/types/session";
 import type { SessionActivity } from "@/types/activity";
 import type { Participant } from "@/types/participant";
-import type { ScheduleType } from "@/types/session";
+import type { ProgramMode, ScheduleType } from "@/types/session";
+import type { SessionStatus } from "@/types/session";
 
 export type LocalScheduleItem = {
   id: string;
@@ -42,6 +43,73 @@ type StoredProgramSession = Omit<
 };
 
 const STORAGE_KEY = "minddit.programSessions.v1";
+
+function toDayStart(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function parseDateOnly(value?: string | null) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return toDayStart(parsed);
+}
+
+function getScheduleDateRange(session: ProgramSession) {
+  const points: Date[] = [];
+
+  session.scheduleItems.forEach((item) => {
+    if (session.scheduleType === "DATE_SPECIFIC") {
+      const date = parseDateOnly(item.date);
+      if (date) points.push(date);
+      return;
+    }
+
+    if (session.scheduleType === "WEEKLY") {
+      const start = parseDateOnly(item.weekStart);
+      const end = parseDateOnly(item.weekEnd);
+      if (start) points.push(start);
+      if (end) points.push(end);
+      return;
+    }
+
+    if (session.scheduleType === "MONTHLY" && item.year && item.month) {
+      points.push(new Date(item.year, item.month - 1, 1));
+    }
+  });
+
+  if (points.length === 0) return { start: null as Date | null, end: null as Date | null };
+
+  points.sort((a, b) => a.getTime() - b.getTime());
+  return { start: points[0], end: points[points.length - 1] };
+}
+
+function deriveStatusByDate(session: ProgramSession): SessionStatus {
+  if (session.status === "DRAFT") return "DRAFT";
+
+  const today = toDayStart(new Date());
+  const scheduleRange = getScheduleDateRange(session);
+
+  const start = session.startDate
+    ? toDayStart(session.startDate)
+    : scheduleRange.start ?? (session.scheduledAt ? toDayStart(session.scheduledAt) : null);
+  const end = session.endDate
+    ? toDayStart(session.endDate)
+    : scheduleRange.end ?? start;
+
+  if (!start || !end) return session.status;
+
+  if (today.getTime() < start.getTime()) return "SCHEDULED";
+  if (today.getTime() > end.getTime()) return "COMPLETED";
+  return "ACTIVE";
+}
+
+function withDerivedStatus(session: ProgramSession): ProgramSession {
+  return {
+    ...session,
+    status: deriveStatusByDate(session),
+  };
+}
 
 function toStored(session: ProgramSession): StoredProgramSession {
   return {
@@ -111,16 +179,16 @@ export function getProgramSessions(): ProgramSession[] {
   if (!raw) {
     const seed = cloneSeed();
     persist(seed);
-    return seed;
+    return seed.map(withDerivedStatus);
   }
 
   try {
     const parsed = JSON.parse(raw) as StoredProgramSession[];
-    return parsed.map(fromStored);
+    return parsed.map(fromStored).map(withDerivedStatus);
   } catch {
     const seed = cloneSeed();
     persist(seed);
-    return seed;
+    return seed.map(withDerivedStatus);
   }
 }
 
@@ -134,6 +202,7 @@ export function createProgramSession(input: {
   startDate?: string;
   endDate?: string;
   description?: string;
+  mode?: ProgramMode;
 }): ProgramSession {
   const now = new Date();
   const startDate = input.startDate ?? "";
@@ -143,6 +212,8 @@ export function createProgramSession(input: {
     id: `local-${Date.now()}`,
     title: input.title,
     description: input.description ?? null,
+    expertName: "서윤희",
+    mode: input.mode ?? "IN_PERSON",
     status: "DRAFT",
     scheduleType: "DATE_SPECIFIC",
     joinCode: Math.random().toString(36).slice(2, 10).toUpperCase(),
@@ -169,7 +240,7 @@ export function updateProgramSession(
   patch: Partial<
     Pick<
       ProgramSession,
-      "title" | "description" | "scheduledAt" | "activities" | "scheduleActivities" | "scheduleType" | "scheduleItems" | "startDate" | "endDate" | "status"
+      "title" | "description" | "expertName" | "mode" | "scheduledAt" | "activities" | "scheduleActivities" | "scheduleType" | "scheduleItems" | "startDate" | "endDate" | "status" | "participants" | "_count"
     >
   >
 ): ProgramSession | null {
@@ -183,9 +254,9 @@ export function updateProgramSession(
     updatedAt: new Date(),
   };
 
-  sessions[idx] = updated;
+  sessions[idx] = withDerivedStatus(updated);
   persist(sessions);
-  return updated;
+  return sessions[idx];
 }
 
 export function deleteProgramSession(id: string): boolean {
