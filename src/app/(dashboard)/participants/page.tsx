@@ -28,7 +28,7 @@ export default function ParticipantsPage() {
             </svg>
           </button>
 
-          <Link href="/participants/new" className="inline-flex h-10 items-center rounded-lg bg-[#485763] px-4 text-sm font-medium text-white transition hover:bg-[#3f4c56]">
+          <Link href="/participants/new" className="inline-flex h-10 items-center justify-center rounded-lg bg-[#485763] px-4 text-sm font-medium text-white transition hover:bg-[#3f4c56]">
             + 새 참여자
           </Link>
         </div>

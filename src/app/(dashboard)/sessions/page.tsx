@@ -1,15 +1,209 @@
-import { mockSessions } from "@/lib/mock";
-import Link from "next/link";
+"use client";
 
-const statusLabel: Record<string, string> = { DRAFT: "초안", SCHEDULED: "예정", ACTIVE: "진행중", COMPLETED: "완료" };
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { createPortal } from "react-dom";
+import {
+  deleteProgramSession,
+  getProgramDateSummary,
+  getProgramSessions,
+  type ProgramSession,
+} from "@/lib/programSessions";
+import type { ProgramMode } from "@/types/session";
+
+const statusLabel: Record<string, string> = { DRAFT: "임시 저장", SCHEDULED: "예정", ACTIVE: "진행중", COMPLETED: "완료" };
 const statusColor: Record<string, string> = {
-  DRAFT: "bg-gray-100 text-gray-600",
+  DRAFT: "border border-gray-300 bg-transparent text-gray-600",
   SCHEDULED: "bg-blue-50 text-blue-700",
   ACTIVE: "bg-green-50 text-green-700",
-  COMPLETED: "bg-gray-50 text-gray-500",
+  COMPLETED: "bg-gray-200 text-gray-700",
 };
 
+const GUIDE_MESSAGE_STORAGE_KEY = "minddit.program-guide-messages.v1";
+
+function escapeCsvCell(value: string) {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+function downloadSessionsCsv(sessions: ProgramSession[]) {
+  const header = ["번호", "프로그램 명", "참여자 수", "프로그램 기간"];
+  const rows = sessions.map((session, index) => [
+    String(index + 1),
+    session.title,
+    String(session._count.participants),
+    getProgramDateSummary(session),
+  ]);
+
+  const csv = [header, ...rows]
+    .map((row) => row.map(escapeCsvCell).join(","))
+    .join("\r\n");
+
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `programs-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  window.URL.revokeObjectURL(url);
+}
+
 export default function SessionsPage() {
+  const [sessions, setSessions] = useState<ProgramSession[]>([]);
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "SCHEDULED" | "ACTIVE" | "COMPLETED" | "DRAFT">("ALL");
+  const [messageSession, setMessageSession] = useState<ProgramSession | null>(null);
+  const [messageDraft, setMessageDraft] = useState("");
+  const [isEditingMessage, setIsEditingMessage] = useState(false);
+  const [customMessages, setCustomMessages] = useState<Record<string, string>>({});
+  const [mounted, setMounted] = useState(false);
+
+  const filteredSessions = useMemo(() => {
+    if (statusFilter === "ALL") return sessions;
+    return sessions.filter((session) => session.status === statusFilter);
+  }, [sessions, statusFilter]);
+
+  const statusCounts = useMemo(() => {
+    const counts = {
+      ALL: sessions.length,
+      SCHEDULED: 0,
+      ACTIVE: 0,
+      COMPLETED: 0,
+      DRAFT: 0,
+    };
+
+    sessions.forEach((session) => {
+      if (session.status in counts) {
+        counts[session.status as "SCHEDULED" | "ACTIVE" | "COMPLETED" | "DRAFT"] += 1;
+      }
+    });
+
+    return counts;
+  }, [sessions]);
+
+  useEffect(() => {
+    setSessions(getProgramSessions());
+
+    try {
+      const raw = window.localStorage.getItem(GUIDE_MESSAGE_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, string>;
+        setCustomMessages(parsed);
+      }
+    } catch {
+      setCustomMessages({});
+    }
+
+    setMounted(true);
+  }, []);
+
+  function onDeleteSession(id: string) {
+    const ok = window.confirm("정말 삭제 하시겠습니까?");
+    if (!ok) return;
+
+    const deleted = deleteProgramSession(id);
+    if (!deleted) return;
+    setSessions((prev) => prev.filter((session) => session.id !== id));
+    window.dispatchEvent(
+      new CustomEvent("minddit:toast", {
+        detail: { message: "삭제되었습니다.", tone: "error" },
+      })
+    );
+  }
+
+  function getModeLabel(mode?: ProgramMode | null) {
+    if (mode === "ONLINE") return "비대면";
+    if (mode === "HYBRID") return "대면+비대면";
+    return "대면";
+  }
+
+  function buildProgramGuideMessage(session: ProgramSession) {
+    const programName = session.title;
+    const schedule = getProgramDateSummary(session);
+    const roundText = session.scheduleItems?.length ? `${session.scheduleItems.length}회차` : "미정";
+    const modeText = getModeLabel(session.mode);
+    const link = `${window.location.origin}/s/${session.joinCode}`;
+    const email = session.institutionEmail?.trim() || "미입력(설정 필요)";
+    const phone = session.institutionPhone?.trim();
+
+    const phoneLine = phone ? `\n* 연락처: ${phone}` : "";
+
+    return `[${programName}]
+안녕하세요.
+본 메시지는 [${programName}] 안내를 위해 발송되었습니다.
+
+📌 안내
+* 일정: ${schedule}
+* 회차: ${roundText}
+* 진행 방식: ${modeText}
+
+[${programName}]의 상세 내용은 아래 링크에서 확인하실 수 있습니다.
+${link}
+
+📞 문의
+기타 문의사항이 있으신 경우 아래 연락처로 문의해 주시기 바랍니다.
+* 이메일: ${email}${phoneLine}
+
+감사합니다.
+좋은 하루 보내세요. :)`;
+  }
+
+  function onOpenGuideMessage(session: ProgramSession) {
+    setMessageSession(session);
+    setIsEditingMessage(false);
+    setMessageDraft(customMessages[session.id] ?? buildProgramGuideMessage(session));
+  }
+
+  function onSaveGuideMessage() {
+    if (!messageSession) return;
+    const next = {
+      ...customMessages,
+      [messageSession.id]: messageDraft,
+    };
+    setCustomMessages(next);
+    window.localStorage.setItem(GUIDE_MESSAGE_STORAGE_KEY, JSON.stringify(next));
+    setIsEditingMessage(false);
+    window.dispatchEvent(
+      new CustomEvent("minddit:toast", {
+        detail: { message: "메세지 내용이 저장되었습니다.", tone: "success" },
+      })
+    );
+  }
+
+  async function onCopyGuideMessage() {
+    const text = messageDraft;
+    try {
+      await navigator.clipboard.writeText(text);
+      window.dispatchEvent(
+        new CustomEvent("minddit:toast", {
+          detail: { message: "내용이 복사되었습니다.", tone: "success" },
+        })
+      );
+    } catch {
+      window.dispatchEvent(
+        new CustomEvent("minddit:toast", {
+          detail: { message: "복사에 실패했습니다.", tone: "error" },
+        })
+      );
+    }
+  }
+
+  async function onCopyProgramLink(session: ProgramSession) {
+    const link = `${window.location.origin}/s/${session.joinCode}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      window.dispatchEvent(
+        new CustomEvent("minddit:toast", {
+          detail: { message: "프로그램 링크가 복사되었습니다.", tone: "success" },
+        })
+      );
+    } catch {
+      window.dispatchEvent(
+        new CustomEvent("minddit:toast", {
+          detail: { message: "복사에 실패했습니다.", tone: "error" },
+        })
+      );
+    }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -50,28 +244,158 @@ export default function SessionsPage() {
             </svg>
           </button>
 
-          <Link href="/sessions/s1/builder"
-            className="inline-flex h-10 items-center rounded-lg bg-[#485763] px-4 text-sm font-medium text-white transition hover:bg-[#3f4c56]">
+          <button
+            type="button"
+            onClick={() => downloadSessionsCsv(sessions)}
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#417572] px-4 text-sm font-medium text-white transition hover:bg-[#356663]"
+          >
+            엑셀(.csv) 다운
+          </button>
+
+          <Link
+            href="/sessions/new"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#485763] px-4 text-sm font-medium text-white transition hover:bg-[#3f4c56]"
+          >
             + 새 프로그램
           </Link>
         </div>
       </div>
-      <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-        {mockSessions.map((s) => (
-          <Link key={s.id} href={`/sessions/${s.id}`}
-            className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition">
-            <div>
-              <p className="font-medium text-gray-900 text-sm">{s.title}</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                참여자 {s._count.participants}명 · {new Date(s.createdAt).toLocaleDateString("ko-KR")} 생성
-              </p>
-            </div>
-            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColor[s.status]}`}>
-              {statusLabel[s.status]}
-            </span>
-          </Link>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {[
+          { key: "ALL", label: "전체" },
+          { key: "SCHEDULED", label: "예정" },
+          { key: "ACTIVE", label: "진행" },
+          { key: "COMPLETED", label: "완료" },
+          { key: "DRAFT", label: "임시저장" },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setStatusFilter(tab.key as "ALL" | "SCHEDULED" | "ACTIVE" | "COMPLETED" | "DRAFT")}
+            className={
+              statusFilter === tab.key
+                ? "rounded-lg border border-[#485763] bg-[#485763] px-3 py-1.5 text-xs font-medium text-white"
+                : "rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            }
+          >
+            {tab.label}({statusCounts[tab.key as "ALL" | "SCHEDULED" | "ACTIVE" | "COMPLETED" | "DRAFT"]})
+          </button>
         ))}
       </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+        {filteredSessions.map((s) => (
+          <div key={s.id} className="flex items-center justify-between gap-3 px-6 py-4 hover:bg-gray-50 transition">
+            <div className="min-w-0 flex flex-1 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => onOpenGuideMessage(s)}
+                aria-label="프로그램 안내 메세지"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 transition hover:bg-gray-100"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.8" />
+                  <path d="M4 7L12 13L20 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => onCopyProgramLink(s)}
+                aria-label="프로그램 링크 복사"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 transition hover:bg-gray-100"
+              >
+                <span className="text-[18px] leading-none" aria-hidden="true">🔗</span>
+              </button>
+              <Link href={`/sessions/${s.id}`} className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-gray-900 text-base">{s.title}</p>
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColor[s.status]}`}>
+                    {statusLabel[s.status]}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-400 mt-0.5">
+                  참여자 {s._count.participants}명 · {getProgramDateSummary(s)}
+                </p>
+              </Link>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onDeleteSession(s.id)}
+                aria-label="프로그램 삭제"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {mounted &&
+        typeof document !== "undefined" &&
+        messageSession &&
+        createPortal(
+          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/55 px-4">
+            <div className="w-full max-w-xl rounded-xl bg-white p-5 shadow-2xl">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-base font-bold text-gray-900">프로그램 안내 메세지</h2>
+                <div className="flex items-center gap-2">
+                  {isEditingMessage ? (
+                    <button
+                      type="button"
+                      onClick={onSaveGuideMessage}
+                      className="inline-flex h-9 items-center justify-center rounded-lg bg-[#485763] px-3 text-sm font-medium text-white hover:bg-[#3f4c56]"
+                    >
+                      저장
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingMessage(true)}
+                      className="inline-flex h-9 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      편집
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onCopyGuideMessage()}
+                    className="inline-flex h-9 items-center justify-center rounded-lg bg-[#485763] px-3 text-sm font-medium text-white hover:bg-[#3f4c56]"
+                  >
+                    문자 복사하기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMessageSession(null)}
+                    className="-translate-y-0.5 text-[26px] font-medium leading-none text-gray-700 hover:text-gray-900"
+                    aria-label="닫기"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              {isEditingMessage ? (
+                <textarea
+                  value={messageDraft}
+                  onChange={(e) => setMessageDraft(e.target.value)}
+                  className="h-[360px] w-full resize-none rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 outline-none focus:border-gray-400"
+                />
+              ) : (
+                <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+{messageDraft}
+                </pre>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
