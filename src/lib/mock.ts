@@ -65,10 +65,16 @@ export const mockSessions: (Session & { activities: SessionActivity[]; participa
 ];
 
 export const mockContentBlocks = [
-  { id: "c1", title: "감정 체크인", type: "CHECKIN" as const, durationMin: 5, description: "지금 이 순간 감정 상태를 확인합니다.", content: "현재 감정을 1~10점으로 표현해보세요.", isPublic: true, createdAt: new Date() },
-  { id: "c2", title: "마음챙김 호흡", type: "BREATHING" as const, durationMin: 7, description: "4-7-8 호흡법으로 마음을 안정시킵니다.", content: "4초 흡입 → 7초 유지 → 8초 날숨", isPublic: true, createdAt: new Date() },
-  { id: "c3", title: "감사 저널", type: "JOURNAL" as const, durationMin: 10, description: "오늘 감사한 것 3가지를 적어봅니다.", content: "", isPublic: true, createdAt: new Date() },
-  { id: "c4", title: "바디스캔 명상", type: "MEDITATION" as const, durationMin: 15, description: "몸의 각 부분에 주의를 기울입니다.", content: "", isPublic: true, createdAt: new Date() },
-  { id: "c5", title: "그룹 토론", type: "DISCUSSION" as const, durationMin: 20, description: "참여자들과 경험을 나눕니다.", content: "", isPublic: true, createdAt: new Date() },
-  { id: "c6", title: "스트레칭 동작", type: "MOVEMENT" as const, durationMin: 8, description: "간단한 스트레칭으로 긴장을 풉니다.", content: "", isPublic: true, createdAt: new Date() },
+  // ── 진단 설문 ──────────────────────────────────────────
+  { id: "c7",  title: "가치 명료화 (VLQ)",        type: "POLL" as const, durationMin: 20, description: "ACT 기반 12개 삶의 영역 중요도·실천도 설문.", content: "/library/vlq",        isPublic: true, createdAt: new Date() },
+  { id: "c8",  title: "반추 척도",                type: "POLL" as const, durationMin: 15, description: "우울 시 반추적 사고 패턴을 평가합니다.",       content: "/library/rumination", isPublic: true, createdAt: new Date() },
+  { id: "c9",  title: "수용-행동 질문지 (AAQ-II)", type: "POLL" as const, durationMin: 10, description: "심리적 비유연성과 경험 회피 수준을 측정합니다.", content: "/library/aaq",        isPublic: true, createdAt: new Date() },
+  { id: "c10", title: "번아웃 척도 (MBI-GS)",      type: "POLL" as const, durationMin: 15, description: "소진·비인격화·효능감 3개 하위척도 측정.",      content: "/library/burnout",    isPublic: true, createdAt: new Date() },
+
+  // ── 워크샵 도구 / 워크시트 ────────────────────────────
+  { id: "c11", title: "일기 쓰기",                type: "JOURNAL"   as const, durationMin: 15, description: "오늘의 생각과 감정을 자유롭게 기록합니다.",    content: "/library/journal",    isPublic: true, createdAt: new Date() },
+
+  // ── 영상 콘텐츠 ───────────────────────────────────────
+  { id: "c12", title: "나뭇잎 배띄우기", type: "VIDEO" as const, durationMin: 10, description: "ACT 탈융합 명상 — 생각을 나뭇잎에 올려 흘려보냅니다.", content: "/library/leaf",      isPublic: true, createdAt: new Date() },
+  { id: "c13", title: "호흡 명상",       type: "VIDEO" as const, durationMin: 10, description: "4-7-8 호흡법으로 마음을 고요하게 가라앉히는 명상입니다.", content: "/library/breathing", isPublic: true, createdAt: new Date() },
 ];

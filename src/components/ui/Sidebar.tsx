@@ -13,7 +13,7 @@ const LOCAL_ACCOUNT_KEY = "minddit.account.local.v1";
 const NAV = [
   { href: "/dashboard", label: "홈" },
   { href: "/sessions", label: "프로그램 관리" },
-  { href: "/participants", label: "참여자 관리" },
+  // { href: "/participants", label: "참여자 관리" },
   { href: "/library", label: "콘텐츠 관리" },
   { href: "/settings", label: "설정" },
 ];
