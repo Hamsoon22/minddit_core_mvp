@@ -10,4 +10,5 @@ export interface SessionActivity {
   durationMin: number;
   content?: string | null;
   order: number;
+  createdAt?: Date;
 }

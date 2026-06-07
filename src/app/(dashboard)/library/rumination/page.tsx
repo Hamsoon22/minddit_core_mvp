@@ -143,7 +143,7 @@ export default function RuminationPage() {
   const allAnswered = responses.every((v) => v !== null);
 
   // 결과 계산
-  const totalScore = responses.reduce((a, b) => a + (b ?? 0), 0);
+  const totalScore = responses.reduce<number>((a, b) => a + (b ?? 0), 0);
   const dep = calcSum(DEPRESSIVE_ITEMS, responses);
   const ref = calcSum(REFLECTIVE_ITEMS, responses);
   const bro = calcSum(BROODING_ITEMS,   responses);

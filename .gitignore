@@ -60,3 +60,4 @@ coverage/
 uploads/
 temp/
 tmp/
+.vercel
