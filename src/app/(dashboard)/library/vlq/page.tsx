@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // ────────────────────────────────────────────────
 // Types & constants
@@ -155,13 +155,13 @@ function ScoreRow({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex justify-between gap-1">
+      <div className="grid grid-cols-10 gap-1">
         {Array.from({ length: 10 }, (_, i) => i + 1).map((score) => (
           <button
             key={score}
             type="button"
             onClick={() => onChange(score)}
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs transition ${
+            className={`flex h-8 w-full min-w-0 items-center justify-center rounded-full border text-[11px] transition ${
               value === score
                 ? "border-gray-900 bg-gray-900 font-medium text-white"
                 : "border-gray-200 bg-white text-gray-500 hover:border-gray-400 hover:text-gray-900"
@@ -259,6 +259,8 @@ function ResultView({
 // ────────────────────────────────────────────────
 
 export default function VLQPage() {
+  const searchParams = useSearchParams();
+  const isEmbedded = searchParams.get("embed") === "1";
   const [lang, setLang] = useState<Lang>("ko");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [imp, setImp] = useState<(number | null)[]>(Array(12).fill(null));
@@ -291,6 +293,7 @@ export default function VLQPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* ── Top nav ── */}
+      {!isEmbedded && (
       <div className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <Link
@@ -306,8 +309,9 @@ export default function VLQPage() {
           <span className="text-xs font-medium text-gray-700">가치 명료화 (VLQ)</span>
         </div>
       </div>
+      )}
 
-      <div className="mx-auto max-w-2xl px-4 py-8">
+      <div className={`mx-auto max-w-2xl ${isEmbedded ? "px-2 py-3" : "px-4 py-8"}`}>
 
         {step === 3 ? (
           <>

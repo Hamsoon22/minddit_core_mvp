@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 // ────────────────────────────────────────────────
 // Types & constants
@@ -189,6 +190,8 @@ function ScoreCard({
 // ────────────────────────────────────────────────
 
 export default function BurnoutPage() {
+  const searchParams = useSearchParams();
+  const isEmbedded = searchParams.get("embed") === "1";
   const [lang, setLang] = useState<Lang>("ko");
   const [responses, setResponses] = useState<(number | null)[]>(Array(16).fill(null));
   const [submitted, setSubmitted] = useState(false);
@@ -227,6 +230,7 @@ export default function BurnoutPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top nav */}
+      {!isEmbedded && (
       <div className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <Link href="/library" className="flex items-center gap-1.5 text-xs text-gray-400 transition hover:text-gray-700">
@@ -239,8 +243,9 @@ export default function BurnoutPage() {
           <span className="text-xs font-medium text-gray-700">번아웃 척도 (MBI-GS)</span>
         </div>
       </div>
+      )}
 
-      <div className="mx-auto max-w-2xl px-4 py-8">
+      <div className={`mx-auto max-w-2xl ${isEmbedded ? "px-2 py-3" : "px-4 py-8"}`}>
         {!submitted ? (
           <>
             {/* Header block */}
