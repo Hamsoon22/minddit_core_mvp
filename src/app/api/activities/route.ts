@@ -17,6 +17,6 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = schema.parse(await req.json());
-  const activity = await db.sessionActivity.create({ data: body });
+  const activity = await db.sessionActivity.create({ data: body as any });
   return NextResponse.json(activity, { status: 201 });
 }

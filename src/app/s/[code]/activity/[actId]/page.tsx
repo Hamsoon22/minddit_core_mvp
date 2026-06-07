@@ -189,7 +189,7 @@ export default function ActivityPage({ params }: { params: { code: string; actId
     }
 
     recordProgramActivityTap({
-      sessionId: session.id,
+      sessionId: session!.id,
       activityId: activity.id,
       participantId: loggedInUser,
     });
