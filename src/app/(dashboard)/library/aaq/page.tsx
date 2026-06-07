@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 // ────────────────────────────────────────────────
 // Constants
@@ -92,6 +93,8 @@ function RadioRow({
 // ────────────────────────────────────────────────
 
 export default function AAQPage() {
+  const searchParams = useSearchParams();
+  const isEmbedded = searchParams.get("embed") === "1";
   const [responses, setResponses] = useState<(number | null)[]>(Array(7).fill(null));
   const [submitted, setSubmitted] = useState(false);
 
@@ -113,6 +116,7 @@ export default function AAQPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top nav */}
+      {!isEmbedded && (
       <div className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <Link
@@ -128,8 +132,9 @@ export default function AAQPage() {
           <span className="text-xs font-medium text-gray-700">수용-행동 질문지 (AAQ-II)</span>
         </div>
       </div>
+      )}
 
-      <div className="mx-auto max-w-2xl px-4 py-8">
+      <div className={`mx-auto max-w-2xl ${isEmbedded ? "px-2 py-3" : "px-4 py-8"}`}>
         {!submitted ? (
           <>
             {/* Header block */}

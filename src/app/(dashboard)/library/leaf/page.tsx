@@ -2,12 +2,15 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 // ────────────────────────────────────────────────
 // Main page
 // ────────────────────────────────────────────────
 
 export default function LeafMeditationPage() {
+  const searchParams = useSearchParams();
+  const isEmbedded = searchParams.get("embed") === "1";
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
 
@@ -26,6 +29,7 @@ export default function LeafMeditationPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top nav */}
+      {!isEmbedded && (
       <div className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <Link
@@ -41,8 +45,9 @@ export default function LeafMeditationPage() {
           <span className="text-xs font-medium text-gray-700">나뭇잎 배띄우기</span>
         </div>
       </div>
+      )}
 
-      <div className="mx-auto max-w-2xl px-4 py-8">
+      <div className={`mx-auto max-w-2xl ${isEmbedded ? "px-2 py-3" : "px-4 py-8"}`}>
         {/* Header */}
         <div className="mb-6 rounded-xl bg-gray-900 px-6 py-5 text-white">
           <h1 className="mb-1 text-xl font-bold">나뭇잎 배띄우기</h1>

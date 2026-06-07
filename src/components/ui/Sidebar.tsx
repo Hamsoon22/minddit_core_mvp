@@ -158,13 +158,13 @@ export default function Sidebar({
         >
           {profileImage ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={profileImage} alt="프로필 이미지" className="h-8 w-8 rounded-full object-cover shrink-0" />
+            <img src={profileImage} alt="프로필 이미지" className="h-9 w-9 rounded-full object-cover shrink-0" />
           ) : (
             <Image
               src="/profile-avatar.svg"
               alt="프로필 이미지"
-              width={32}
-              height={32}
+              width={36}
+              height={36}
               className="rounded-full shrink-0"
             />
           )}

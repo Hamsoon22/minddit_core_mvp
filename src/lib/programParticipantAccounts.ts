@@ -46,6 +46,11 @@ export function getParticipantAccounts(sessionId: string, fallbackCount = 1): Pr
   return defaults;
 }
 
+export function getExistingParticipantAccounts(sessionId: string): ProgramParticipantAccount[] {
+  const map = readJsonMap<ProgramParticipantAccount[]>(ACCOUNTS_KEY);
+  return map[sessionId] ?? [];
+}
+
 export function saveParticipantAccounts(sessionId: string, accounts: ProgramParticipantAccount[]) {
   const map = readJsonMap<ProgramParticipantAccount[]>(ACCOUNTS_KEY);
   map[sessionId] = accounts;
@@ -53,7 +58,8 @@ export function saveParticipantAccounts(sessionId: string, accounts: ProgramPart
 }
 
 export function verifyParticipantLogin(sessionId: string, username: string, password: string) {
-  const accounts = getParticipantAccounts(sessionId, 1);
+  const accounts = getExistingParticipantAccounts(sessionId);
+  if (accounts.length === 0) return null;
   const trimmedId = username.trim();
   const trimmedPw = password.trim();
   return accounts.find((account) => account.username === trimmedId && account.password === trimmedPw) ?? null;

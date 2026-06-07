@@ -42,7 +42,7 @@ type StoredProgramSession = Omit<
   participants: StoredParticipant[];
 };
 
-const STORAGE_KEY = "minddit.programSessions.v1";
+const STORAGE_KEY = "minddit.programSessions.v3";
 
 function toDayStart(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());

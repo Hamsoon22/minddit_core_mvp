@@ -10,6 +10,9 @@ import {
   type ProgramSession,
 } from "@/lib/programSessions";
 import type { ProgramMode } from "@/types/session";
+import { getActivityTypeMeta } from "@/lib/contentCatalog";
+import { getProgramActivityMetrics } from "@/lib/programActivityMetrics";
+import { getExistingParticipantAccounts, getParticipantAccounts } from "@/lib/programParticipantAccounts";
 
 const statusLabel: Record<string, string> = { DRAFT: "임시 저장", SCHEDULED: "예정", ACTIVE: "진행중", COMPLETED: "완료" };
 const statusColor: Record<string, string> = {
@@ -47,6 +50,89 @@ function downloadSessionsCsv(sessions: ProgramSession[]) {
   window.URL.revokeObjectURL(url);
 }
 
+function downloadProgramDetailCsv(session: ProgramSession) {
+  const metricsByActivity = getProgramActivityMetrics(session.id);
+
+  const sections =
+    session.scheduleItems.length > 0
+      ? session.scheduleItems
+      : [{ id: "default", label: "기본 세션" }];
+
+  const sectionActivities: Record<string, ProgramSession["activities"]> = {};
+  sections.forEach((section, index) => {
+    const stored = session.scheduleActivities?.[section.id] ?? [];
+    if (stored.length > 0) {
+      sectionActivities[section.id] = stored;
+      return;
+    }
+    sectionActivities[section.id] = index === 0 ? session.activities ?? [] : [];
+  });
+
+  const totalActivities = Object.values(sectionActivities).flat().length;
+  const totalTaps = Object.values(metricsByActivity).reduce((sum, item) => sum + item.totalTaps, 0);
+
+  const fallbackCount = Math.max(session._count.participants || 0, 1);
+  const existing = getExistingParticipantAccounts(session.id);
+  const accounts = existing.length > 0 ? existing : getParticipantAccounts(session.id, fallbackCount);
+
+  const rows: string[][] = [
+    ["프로그램명", session.title],
+    ["상태", statusLabel[session.status]],
+    ["프로그램 기간", getProgramDateSummary(session)],
+    ["참여자 수", String(session._count.participants)],
+    ["활동 수", String(totalActivities)],
+    ["활동 총 탭수", String(totalTaps)],
+    [],
+    ["참여자", "아이디", "총 탭수"],
+    ...accounts.map((account) => {
+      const total = Object.values(metricsByActivity).reduce(
+        (sum, metric) => sum + (metric.participantTaps[account.username] ?? 0),
+        0
+      );
+      return [account.name, account.username, String(total)];
+    }),
+    [],
+    ["회차", "활동명", "유형", "총 탭수"],
+  ];
+
+  const activityColumns: { id: string; label: string }[] = [];
+
+  sections.forEach((section) => {
+    (sectionActivities[section.id] ?? []).forEach((activity) => {
+      activityColumns.push({ id: activity.id, label: `${section.label}:${activity.title}` });
+      const metric = metricsByActivity[activity.id];
+      rows.push([
+        section.label,
+        activity.title,
+        getActivityTypeMeta(activity.type).label,
+        String(metric?.totalTaps ?? 0),
+      ]);
+    });
+  });
+
+  rows.push([]);
+  rows.push(["참여자", "아이디", ...activityColumns.map((column) => column.label)]);
+  accounts.forEach((account) => {
+    rows.push([
+      account.name,
+      account.username,
+      ...activityColumns.map((column) => String(metricsByActivity[column.id]?.participantTaps[account.username] ?? 0)),
+    ]);
+  });
+
+  const csv = rows
+    .map((row) => row.map(escapeCsvCell).join(","))
+    .join("\r\n");
+
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `program-${session.id}-stats-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  window.URL.revokeObjectURL(url);
+}
+
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<ProgramSession[]>([]);
   const [statusFilter, setStatusFilter] = useState<"ALL" | "SCHEDULED" | "ACTIVE" | "COMPLETED" | "DRAFT">("ALL");
@@ -56,10 +142,18 @@ export default function SessionsPage() {
   const [customMessages, setCustomMessages] = useState<Record<string, string>>({});
   const [mounted, setMounted] = useState(false);
 
+  const sortedSessions = useMemo(() => {
+    return [...sessions].sort((a, b) => {
+      const aTime = (a.startDate ?? a.scheduledAt ?? a.createdAt).getTime();
+      const bTime = (b.startDate ?? b.scheduledAt ?? b.createdAt).getTime();
+      return bTime - aTime;
+    });
+  }, [sessions]);
+
   const filteredSessions = useMemo(() => {
-    if (statusFilter === "ALL") return sessions;
-    return sessions.filter((session) => session.status === statusFilter);
-  }, [sessions, statusFilter]);
+    if (statusFilter === "ALL") return sortedSessions;
+    return sortedSessions.filter((session) => session.status === statusFilter);
+  }, [sortedSessions, statusFilter]);
 
   const statusCounts = useMemo(() => {
     const counts = {
@@ -190,6 +284,7 @@ ${link}
     const link = `${window.location.origin}/s/${session.joinCode}`;
     try {
       await navigator.clipboard.writeText(link);
+      window.open(link, "_blank", "noopener,noreferrer");
       window.dispatchEvent(
         new CustomEvent("minddit:toast", {
           detail: { message: "프로그램 링크가 복사되었습니다.", tone: "success" },
@@ -246,7 +341,7 @@ ${link}
 
           <button
             type="button"
-            onClick={() => downloadSessionsCsv(sessions)}
+            onClick={() => downloadSessionsCsv(sortedSessions)}
             className="inline-flex h-10 items-center justify-center rounded-lg bg-[#417572] px-4 text-sm font-medium text-white transition hover:bg-[#356663]"
           >
             엑셀(.csv) 다운

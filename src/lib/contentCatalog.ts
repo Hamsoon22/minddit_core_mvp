@@ -1,5 +1,6 @@
 import { mockContentBlocks } from "@/lib/mock";
 import type { ActivityType } from "@/types/activity";
+import type { SessionActivity } from "@/types/activity";
 
 export const ACTIVITY_TYPE_META: Record<ActivityType, { label: string; color: string }> = {
   CHECKIN: { label: "체크인", color: "bg-blue-50 text-blue-700" },
@@ -23,3 +24,19 @@ export const CONTENT_CATALOG = mockContentBlocks.map((content) => ({
   ...content,
   typeMeta: getActivityTypeMeta(content.type),
 }));
+
+export function syncSessionActivityFromCatalog(activity: SessionActivity): SessionActivity {
+  const byContent = CONTENT_CATALOG.find((item) => item.content && item.content === activity.content);
+  const byTitle = CONTENT_CATALOG.find((item) => item.title === activity.title);
+  const matched = byContent ?? byTitle;
+
+  if (!matched) return activity;
+
+  return {
+    ...activity,
+    title: matched.title,
+    type: matched.type,
+    durationMin: matched.durationMin,
+    content: matched.content ?? activity.content,
+  };
+}

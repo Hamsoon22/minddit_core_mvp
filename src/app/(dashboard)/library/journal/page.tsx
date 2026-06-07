@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 // ────────────────────────────────────────────────
 // Constants
@@ -22,6 +23,8 @@ const PROMPTS = [
 // ────────────────────────────────────────────────
 
 export default function JournalPage() {
+  const searchParams = useSearchParams();
+  const isEmbedded = searchParams.get("embed") === "1";
   const [text, setText] = useState("");
   const [promptIdx, setPromptIdx] = useState(0);
   const [saved, setSaved] = useState(false);
@@ -42,6 +45,7 @@ export default function JournalPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top nav */}
+      {!isEmbedded && (
       <div className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <Link
@@ -57,17 +61,20 @@ export default function JournalPage() {
           <span className="text-xs font-medium text-gray-700">일기 쓰기</span>
         </div>
       </div>
+      )}
 
-      <div className="mx-auto max-w-2xl px-4 py-8">
+      <div className={`mx-auto max-w-2xl ${isEmbedded ? "px-2 py-3" : "px-4 py-8"}`}>
         {!saved ? (
           <>
             {/* Header */}
+            {!isEmbedded && (
             <div className="mb-6 rounded-xl bg-gray-900 px-6 py-5 text-white">
               <h1 className="mb-1 text-xl font-bold">일기 쓰기</h1>
               <p className="text-sm text-white/70">
                 오늘의 생각과 감정을 자유롭게 기록해보세요.
               </p>
             </div>
+            )}
 
             {/* Prompt card */}
             <div className="mb-4 rounded-xl border border-gray-200 bg-white px-5 py-4">
@@ -85,7 +92,7 @@ export default function JournalPage() {
                   다른 질문
                 </button>
               </div>
-              <p className="text-sm font-medium text-gray-800">{PROMPTS[promptIdx]}</p>
+              <p className="text-sm font-bold text-gray-800">{PROMPTS[promptIdx]}</p>
             </div>
 
             {/* Textarea */}
@@ -119,10 +126,12 @@ export default function JournalPage() {
         ) : (
           <>
             {/* Saved state */}
+            {!isEmbedded && (
             <div className="mb-6 rounded-xl bg-gray-900 px-6 py-5 text-white">
               <h1 className="mb-1 text-xl font-bold">일기 쓰기</h1>
               <p className="text-sm text-white/70">오늘의 기록이 저장되었습니다.</p>
             </div>
+            )}
 
             <div className="rounded-xl border border-gray-200 bg-white p-5">
               <p className="mb-3 text-xs font-medium text-gray-400">{PROMPTS[promptIdx]}</p>

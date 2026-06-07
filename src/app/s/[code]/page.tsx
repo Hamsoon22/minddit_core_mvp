@@ -6,7 +6,7 @@ import { mockSessions } from "@/lib/mock";
 import { getProgramSessions, type ProgramSession } from "@/lib/programSessions";
 
 function getFallbackSession(code: string): ProgramSession | null {
-  const base = mockSessions.find((s) => s.joinCode === code) ?? mockSessions[0];
+  const base = mockSessions.find((s) => s.joinCode === code);
   if (!base) return null;
 
   return {
@@ -56,7 +56,7 @@ export default function ParticipantLandingPage({ params }: { params: { code: str
               </svg>
             </div>
             <h1 className="mb-1 text-xl font-bold leading-snug text-[#1f2937]">{session.title}</h1>
-            <p className="mb-2 text-sm text-gray-500">{description}</p>
+            <p className="mb-2 whitespace-pre-line text-sm text-gray-500">{description}</p>
             <p className="mb-6 text-base font-medium text-[#6b7280]">프로그램에 참여합니다</p>
 
             <Link
