@@ -6,14 +6,16 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { getProgramSessionById, updateProgramSession, type ProgramSession } from "@/lib/programSessions";
 import type { SessionActivity } from "@/types/activity";
-import { getActivityTypeMeta } from "@/lib/contentCatalog";
+import { getActivityTypeMeta, syncSessionActivityFromCatalog } from "@/lib/contentCatalog";
 import {
   buildDefaultParticipantAccounts,
+  getExistingParticipantAccounts,
   getParticipantAccounts,
   saveParticipantAccounts,
   type ProgramParticipantAccount,
 } from "@/lib/programParticipantAccounts";
 import type { Participant } from "@/types/participant";
+import { getProgramActivityMetrics } from "@/lib/programActivityMetrics";
 
 const statusLabel: Record<string, string> = {
   DRAFT: "임시 저장",
@@ -64,6 +66,10 @@ function toStartOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
+function escapeCsvCell(value: string) {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
 function parseSectionStartDate(
   section: ProgramSession["scheduleItems"][number] | { id: string; label: string },
   scheduleType?: ProgramSession["scheduleType"]
@@ -106,6 +112,15 @@ export default function SessionDetailViewPage({ params }: { params: { id: string
     [session]
   );
 
+  const metricsByActivity = useMemo(() => {
+    if (!session) return {};
+    return getProgramActivityMetrics(session.id);
+  }, [session]);
+
+  const totalActivityTaps = useMemo(() => {
+    return Object.values(metricsByActivity).reduce((sum, item) => sum + item.totalTaps, 0);
+  }, [metricsByActivity]);
+
   const sectionActivities = useMemo(() => {
     if (!session) return {} as Record<string, SessionActivity[]>;
 
@@ -125,6 +140,11 @@ export default function SessionDetailViewPage({ params }: { params: { id: string
 
     return map;
   }, [session, sections]);
+
+  const totalActivities = useMemo(
+    () => Object.values(sectionActivities).flat().length,
+    [sectionActivities]
+  );
 
   const blinkingSectionIndex = useMemo(() => {
     if (!session || sections.length === 0) return -1;
@@ -271,7 +291,92 @@ ${link}
 
   async function onCopyProgramLink() {
     if (!session) return;
-    await onCopyText(`${window.location.origin}/s/${session.joinCode}`, "프로그램 링크가 복사되었습니다.");
+    const link = `${window.location.origin}/s/${session.joinCode}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      window.open(link, "_blank", "noopener,noreferrer");
+      window.dispatchEvent(
+        new CustomEvent("minddit:toast", {
+          detail: { message: "프로그램 링크가 복사되었습니다.", tone: "success" },
+        })
+      );
+    } catch {
+      window.dispatchEvent(
+        new CustomEvent("minddit:toast", {
+          detail: { message: "복사에 실패했습니다.", tone: "error" },
+        })
+      );
+    }
+  }
+
+  function onOpenActivity(activity: SessionActivity) {
+    if (!session) return;
+    const mobileLink = `${window.location.origin}/s/${session.joinCode}/activity/${activity.id}`;
+    window.open(mobileLink, "_blank", "noopener,noreferrer");
+  }
+
+  function onDownloadProgramStatsCsv() {
+    if (!session) return;
+
+    const fallbackCount = Math.max(session._count.participants || 0, 1);
+    const accounts = getExistingParticipantAccounts(session.id);
+    const accountRows = accounts.length > 0 ? accounts : getParticipantAccounts(session.id, fallbackCount);
+
+    const headerRows: string[][] = [
+      ["프로그램명", session.title],
+      ["상태", statusLabel[session.status]],
+      ["진행 방식", getModeLabel(session.mode)],
+      ["기간", `${formatDate(session.startDate)} ~ ${formatDate(session.endDate)}`],
+      ["참여자 수", String(session._count.participants)],
+      ["활동 수", String(totalActivities)],
+      ["활동 총 탭수", String(totalActivityTaps)],
+      [],
+      ["참여자", "아이디", "총 탭수"],
+    ];
+
+    const participantRows = accountRows.map((account) => {
+      const totalTaps = Object.values(metricsByActivity).reduce(
+        (sum, metric) => sum + (metric.participantTaps[account.username] ?? 0),
+        0
+      );
+      return [account.name, account.username, String(totalTaps)];
+    });
+
+    const roundRows: string[][] = [[], ["회차", "활동명", "유형", "총 탭수"]];
+    const activityColumns: { id: string; label: string }[] = [];
+
+    sections.forEach((section) => {
+      const activities = sectionActivities[section.id] ?? [];
+      activities.forEach((activity) => {
+        activityColumns.push({ id: activity.id, label: `${section.label}:${activity.title}` });
+        const metric = metricsByActivity[activity.id];
+        roundRows.push([
+          section.label,
+          activity.title,
+          getActivityTypeMeta(activity.type).label,
+          String(metric?.totalTaps ?? 0),
+        ]);
+      });
+    });
+
+    const matrixHeader = ["참여자", "아이디", ...activityColumns.map((col) => col.label)];
+    const matrixRows = accountRows.map((account) => [
+      account.name,
+      account.username,
+      ...activityColumns.map((col) => String(metricsByActivity[col.id]?.participantTaps[account.username] ?? 0)),
+    ]);
+
+    const csvRows = [...headerRows, ...participantRows, ...roundRows, [], matrixHeader, ...matrixRows]
+      .map((row) => row.map((cell) => escapeCsvCell(cell)).join(","))
+      .join("\r\n");
+
+    const blob = new Blob(["\uFEFF" + csvRows], { type: "text/csv;charset=utf-8;" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `program-${session.id}-stats-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    window.URL.revokeObjectURL(url);
   }
 
   function openProgramMessageModal() {
@@ -459,7 +564,20 @@ ${link}
 
       {session.status === "COMPLETED" && (
         <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-          참여자 <span className="font-bold">{session._count.participants}명</span> · 활동 <span className="font-bold">{(session.activities ?? []).length}개</span>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <span>참여자 <span className="font-bold">{session._count.participants}명</span></span>
+              <span>활동 <span className="font-bold">{totalActivities}개</span></span>
+              <span>탭수 <span className="font-bold">{totalActivityTaps}회</span></span>
+            </div>
+            <button
+              type="button"
+              onClick={onDownloadProgramStatsCsv}
+              className="inline-flex h-8 items-center justify-center rounded-md bg-[#417572] px-3 text-xs font-medium text-white transition hover:bg-[#356663]"
+            >
+              엑셀(.csv) 다운
+            </button>
+          </div>
         </div>
       )}
 
@@ -507,15 +625,28 @@ ${link}
                         <li key={activity.id} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
                           <div className="flex items-center gap-3">
                             {(() => {
-                              const typeMeta = getActivityTypeMeta(activity.type);
+                              const syncedActivity = syncSessionActivityFromCatalog(activity);
+                              const typeMeta = getActivityTypeMeta(syncedActivity.type);
                               return (
                                 <>
                                   <span className="flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-xs font-medium text-gray-500">{index + 1}</span>
                                   <span className={`inline-flex w-[56px] justify-center rounded-full px-2 py-0.5 text-xs font-medium ${typeMeta.color}`}>
                                     {typeMeta.label}
                                   </span>
-                                  <p className="flex-1 text-sm font-semibold text-gray-900">{activity.title}</p>
-                                  <p className="text-xs text-gray-500">{activity.durationMin}분</p>
+                                  <p className="flex-1 text-sm font-semibold text-gray-900">{syncedActivity.title}</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenActivity(syncedActivity)}
+                                    className="inline-flex h-7 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white px-2.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
+                                  >
+                                    열기
+                                  </button>
+                                  {session.status === "COMPLETED" && (
+                                    <span className="text-xs text-gray-500">
+                                      탭 {metricsByActivity[syncedActivity.id]?.totalTaps ?? 0}회
+                                    </span>
+                                  )}
+                                  <p className="text-xs text-gray-500">{syncedActivity.durationMin}분</p>
                                 </>
                               );
                             })()}
@@ -596,7 +727,7 @@ ${link}
         participantModalOpen &&
         createPortal(
           <div className="fixed inset-0 z-[310] flex items-center justify-center bg-black/55 px-4">
-            <div className="w-full max-w-2xl rounded-xl bg-white p-5 shadow-2xl">
+            <div className="flex h-[70vh] w-full max-w-2xl flex-col rounded-xl bg-white p-5 shadow-2xl">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-base font-bold text-gray-900">참여자 계정 편집</h2>
                 <div className="flex items-center gap-2">
@@ -628,7 +759,7 @@ ${link}
                 </div>
               </div>
 
-              <div className="max-h-[60vh] space-y-2 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <div className="min-h-0 flex-1 space-y-2 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-3">
                 {participantAccounts.map((account, index) => (
                   <div key={account.username} className="grid grid-cols-[90px_1fr_1fr] items-center gap-2 rounded-md border border-gray-200 bg-white p-2">
                     <p className="text-sm font-medium text-gray-700">{account.name}</p>

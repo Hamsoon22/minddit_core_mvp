@@ -2,15 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { mockSessions } from "@/lib/mock";
 import { getProgramSessions, type ProgramSession } from "@/lib/programSessions";
 import type { SessionActivity } from "@/types/activity";
-import { getActivityTypeMeta } from "@/lib/contentCatalog";
+import { getActivityTypeMeta, syncSessionActivityFromCatalog } from "@/lib/contentCatalog";
 import {
   getProgramLinkLoggedInUser,
+  getExistingParticipantAccounts,
   setProgramLinkLoggedInUser,
   verifyParticipantLogin,
 } from "@/lib/programParticipantAccounts";
+import { recordProgramActivityTap } from "@/lib/programActivityMetrics";
 
 function formatDate(date?: Date | null) {
   if (!date) return "-";
@@ -38,7 +41,7 @@ function formatDateText(dateText?: string) {
 }
 
 function getFallbackSession(code: string): ProgramSession | null {
-  const base = mockSessions.find((s) => s.joinCode === code) ?? mockSessions[0];
+  const base = mockSessions.find((s) => s.joinCode === code);
   if (!base) return null;
 
   return {
@@ -58,6 +61,7 @@ function getFallbackSession(code: string): ProgramSession | null {
 }
 
 export default function ActivityPage({ params }: { params: { code: string; actId: string } }) {
+  const router = useRouter();
   const [session, setSession] = useState<ProgramSession | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [loginId, setLoginId] = useState("");
@@ -69,15 +73,18 @@ export default function ActivityPage({ params }: { params: { code: string; actId
     const stored = getProgramSessions().find((s) => s.joinCode === params.code) ?? null;
     const current = stored ?? getFallbackSession(params.code);
     setSession(current);
-    if (current) {
-      // Always start this view logged out.
-      setProgramLinkLoggedInUser(current.joinCode, null);
-    }
-    setLoggedInUser(null);
+    setLoggedInUser(current ? getProgramLinkLoggedInUser(current.joinCode) : null);
   }, [params.code]);
 
   function onSubmitLogin() {
     if (!session) return;
+
+    const accounts = getExistingParticipantAccounts(session.id);
+    if (accounts.length === 0 || session._count.participants <= 0) {
+      setLoginError("아직 참여자 계정이 배부되지 않았습니다.");
+      return;
+    }
+
     const account = verifyParticipantLogin(session.id, loginId, loginPassword);
     if (!account) {
       setLoginError("아이디 또는 비밀번호가 올바르지 않습니다.");
@@ -172,6 +179,35 @@ export default function ActivityPage({ params }: { params: { code: string; actId
   const organizationName = session.institutionName?.trim() || "마인딧센터";
   const description = session.description?.trim() || "프로그램 설명이 없습니다.";
 
+  function onOpenActivity(activity: SessionActivity) {
+    if (!activity.content) return;
+
+    if (!loggedInUser) {
+      setLoginOpen(true);
+      setLoginError("활동을 열기 전에 로그인해 주세요.");
+      return;
+    }
+
+    recordProgramActivityTap({
+      sessionId: session.id,
+      activityId: activity.id,
+      participantId: loggedInUser,
+    });
+
+    if (activity.content.startsWith("/library/")) {
+      const slug = activity.content.replace("/library/", "").split("/")[0];
+      router.push(`/s/library/activity/${slug}`);
+      return;
+    }
+
+    if (activity.content.startsWith("/")) {
+      router.push(activity.content);
+      return;
+    }
+
+    window.open(activity.content, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <div className="min-h-screen bg-[#f3f5f7] pb-16">
       <div className="mx-auto w-full max-w-[430px]">
@@ -183,7 +219,7 @@ export default function ActivityPage({ params }: { params: { code: string; actId
 
         <div className="rounded-b-[28px] bg-[#d7e5f1] px-4 pb-6 pt-8">
           <h1 className="text-2xl font-extrabold leading-tight text-[#101828]">{session.title}</h1>
-          <p className="mt-1 text-sm text-[#4b5563]">{description}</p>
+          <p className="mt-1 whitespace-pre-line text-sm text-[#4b5563]">{description}</p>
 
           <div className="mt-5 space-y-3">
             <div className="flex items-center gap-3 rounded-full bg-white px-4 py-2.5 text-[#1f2937]">
@@ -215,7 +251,8 @@ export default function ActivityPage({ params }: { params: { code: string; actId
 
               <div className="space-y-2">
                 {(sectionActivities[section.id] ?? []).map((activity, index) => {
-                  const typeMeta = getActivityTypeMeta(activity.type);
+                  const syncedActivity = syncSessionActivityFromCatalog(activity);
+                  const typeMeta = getActivityTypeMeta(syncedActivity.type);
                   return (
                     <div key={activity.id} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                       <div className="flex items-center gap-2.5">
@@ -225,7 +262,14 @@ export default function ActivityPage({ params }: { params: { code: string; actId
                         <span className={`inline-flex w-[56px] justify-center rounded-full px-2 py-0.5 text-xs font-medium ${typeMeta.color}`}>
                           {typeMeta.label}
                         </span>
-                        <p className="flex-1 text-sm font-semibold text-gray-900">{activity.title}</p>
+                        <p className="flex-1 text-sm font-semibold text-gray-900">{syncedActivity.title}</p>
+                        <button
+                          type="button"
+                          onClick={() => onOpenActivity(syncedActivity)}
+                          className="inline-flex h-7 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white px-2.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
+                        >
+                          열기
+                        </button>
                       </div>
                     </div>
                   );

@@ -192,7 +192,7 @@ function ToolCard({ tool }: { tool: ContentTool }) {
         </div>
         {available ? (
           <Link
-            href={tool.href}
+            href={`/library/preview/${tool.id}`}
             className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-gray-900 hover:bg-gray-900 hover:text-white"
           >
             열기
@@ -236,19 +236,19 @@ export default function ContentToolsSection() {
   }, [activeCategory, toolSearch]);
 
   return (
-    <section aria-label="콘텐츠 도구" className="flex flex-col gap-4">
+    <section aria-label="콘텐츠 관리" className="flex flex-col gap-4">
 
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">콘텐츠 도구</h2>
-          <p className="mt-0.5 text-xs text-gray-400">워크샵에서 사용할 도구를 선택하세요.</p>
+          <h1 className="text-2xl font-bold text-gray-900">콘텐츠 관리</h1>
+          <p className="mt-2 text-sm text-gray-500">워크샵에서 사용할 도구를 선택하세요.</p>
         </div>
 
         {/* Search */}
         <div className="relative w-full sm:w-52">
           <svg
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-300"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
             width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"
           >
             <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
@@ -258,8 +258,8 @@ export default function ContentToolsSection() {
             type="search"
             value={toolSearch}
             onChange={(e) => setToolSearch(e.target.value)}
-            placeholder="도구 검색..."
-            className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-8 pr-3 text-xs text-gray-700 placeholder-gray-300 outline-none transition focus:border-gray-400"
+            placeholder="도구 검색···"
+            className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-8 pr-3 text-xs text-gray-700 placeholder-gray-500 outline-none transition focus:border-gray-400"
           />
         </div>
       </div>
