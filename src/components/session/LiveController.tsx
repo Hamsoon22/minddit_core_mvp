@@ -16,9 +16,9 @@ export default function LiveController({ session }: Props) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="dashboard-sticky-header mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">{session.title}</h1>
+          <h1 className="text-[1.7rem] font-semibold text-gray-900">{session.title}</h1>
           <div className="flex items-center gap-2 mt-1">
             <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-full font-medium">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500" />

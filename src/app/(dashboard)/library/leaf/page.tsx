@@ -49,9 +49,9 @@ export default function LeafMeditationPage() {
 
       <div className={`mx-auto max-w-2xl ${isEmbedded ? "px-2 py-3" : "px-4 py-8"}`}>
         {/* Header */}
-        <div className="mb-6 rounded-xl bg-gray-900 px-6 py-5 text-white">
+        <div className="mb-6 rounded-lg -translate-y-[2px] bg-[#ffffff] px-6 py-5 text-[#292929]">
           <h1 className="mb-1 text-xl font-bold">나뭇잎 배띄우기</h1>
-          <p className="text-sm text-white/70">
+          <p className="text-sm text-[#4B4B4B]">
             ACT 기반 탈융합 명상입니다. 생각이 떠오를 때마다 나뭇잎에 올려 흘려보내세요.
           </p>
         </div>
@@ -126,6 +126,21 @@ export default function LeafMeditationPage() {
           </p>
         </div>
       </div>
+
+      {!isEmbedded && (
+        <div className="pointer-events-none fixed bottom-[40px] left-1/2 z-[315] w-full max-w-[430px] -translate-x-1/2 px-[25px]">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#292929] text-white shadow-lg transition hover:opacity-90"
+              aria-label="맨 위로 이동"
+            >
+              ↑
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

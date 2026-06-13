@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { mockSessions } from "@/lib/mock";
 import { getProgramSessions, type ProgramSession } from "@/lib/programSessions";
+import { getProgramTheme } from "@/lib/programTheme";
 import type { SessionActivity } from "@/types/activity";
 import { getActivityTypeMeta, syncSessionActivityFromCatalog } from "@/lib/contentCatalog";
 import {
@@ -14,6 +15,24 @@ import {
   verifyParticipantLogin,
 } from "@/lib/programParticipantAccounts";
 import { recordProgramActivityTap } from "@/lib/programActivityMetrics";
+
+function withAlpha(hexColor: string, alpha: number) {
+  const normalized = hexColor.replace("#", "");
+  const isShortHex = normalized.length === 3;
+  const hex = isShortHex
+    ? normalized
+        .split("")
+        .map((char) => char + char)
+        .join("")
+    : normalized;
+
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return hexColor;
+
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 function formatDate(date?: Date | null) {
   if (!date) return "-";
@@ -68,6 +87,7 @@ export default function ActivityPage({ params }: { params: { code: string; actId
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
+  const theme = useMemo(() => getProgramTheme(session?.themeKey), [session?.themeKey]);
 
   useEffect(() => {
     const stored = getProgramSessions().find((s) => s.joinCode === params.code) ?? null;
@@ -176,6 +196,14 @@ export default function ActivityPage({ params }: { params: { code: string; actId
     );
   }
 
+  if (!(session.linkSharingEnabled ?? true)) {
+    return (
+      <div className="min-h-screen bg-[#f4f6f7] px-4 py-10 text-center text-sm text-gray-500">
+        이 프로그램 링크는 비활성화되었습니다.
+      </div>
+    );
+  }
+
   const organizationName = session.institutionName?.trim() || "마인딧센터";
   const description = session.description?.trim() || "프로그램 설명이 없습니다.";
 
@@ -195,8 +223,9 @@ export default function ActivityPage({ params }: { params: { code: string; actId
     });
 
     if (activity.content.startsWith("/library/")) {
+      if (!session) return;
       const slug = activity.content.replace("/library/", "").split("/")[0];
-      router.push(`/s/library/activity/${slug}`);
+      router.push(`/s/library/activity/${slug}?code=${session.joinCode}`);
       return;
     }
 
@@ -212,17 +241,17 @@ export default function ActivityPage({ params }: { params: { code: string; actId
     <div className="min-h-screen bg-[#f3f5f7] pb-16">
       <div className="mx-auto w-full max-w-[430px]">
         {loggedInUser && (
-          <div className="mb-0 flex h-6 w-full items-center justify-center rounded-none bg-[#485763] px-3 text-xs text-white">
+          <div className="mb-0 flex h-6 w-full items-center justify-center rounded-none px-3 text-xs text-white" style={{ backgroundColor: theme.accentColor }}>
             '{loggedInUser}'으로 로그인중입니다.
           </div>
         )}
 
-        <div className="rounded-b-[28px] bg-[#d7e5f1] px-4 pb-6 pt-8">
-          <h1 className="text-2xl font-extrabold leading-tight text-[#101828]">{session.title}</h1>
-          <p className="mt-1 whitespace-pre-line text-sm text-[#4b5563]">{description}</p>
+        <div className="rounded-b-[28px] px-4 pb-6 pt-8" style={{ backgroundColor: withAlpha(theme.panelColor, 0.7) }}>
+          <h1 className="text-2xl font-extrabold leading-tight" style={{ color: theme.textColor }}>{session.title}</h1>
+          <p className="mt-1 whitespace-pre-line text-sm" style={{ color: theme.textColor, opacity: 0.82 }}>{description}</p>
 
           <div className="mt-5 space-y-3">
-            <div className="flex items-center gap-3 rounded-full bg-white px-4 py-2.5 text-[#1f2937]">
+            <div className="flex items-center gap-3 rounded-full bg-white/90 px-4 py-2.5" style={{ color: theme.textColor }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <rect x="3" y="4" width="18" height="17" rx="3" stroke="currentColor" strokeWidth="1.8" />
                 <path d="M8 2.5V6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -232,7 +261,7 @@ export default function ActivityPage({ params }: { params: { code: string; actId
               <span className="text-sm font-semibold">{formatDate(session.startDate)} ~ {formatDate(session.endDate)}</span>
             </div>
 
-            <div className="flex items-center gap-3 rounded-full bg-white px-4 py-2.5 text-[#1f2937]">
+            <div className="flex items-center gap-3 rounded-full bg-white/90 px-4 py-2.5" style={{ color: theme.textColor }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8" />
                 <path d="M4 20C4 16.6863 7.58172 14 12 14C16.4183 14 20 16.6863 20 20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -307,7 +336,8 @@ export default function ActivityPage({ params }: { params: { code: string; actId
           <button
             type="button"
             onClick={() => setLoginOpen(true)}
-            className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#485763] text-white shadow-lg"
+            className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full text-white shadow-lg"
+            style={{ backgroundColor: theme.accentColor }}
             aria-label="로그인 또는 프로필"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -371,7 +401,8 @@ export default function ActivityPage({ params }: { params: { code: string; actId
               <button
                 type="button"
                 onClick={onSubmitLogin}
-                className="inline-flex h-9 items-center justify-center rounded-lg bg-[#485763] px-4 text-sm font-medium text-white hover:bg-[#3f4c56]"
+                className="inline-flex h-9 items-center justify-center rounded-lg px-4 text-sm font-medium text-white hover:opacity-95"
+                style={{ backgroundColor: theme.accentColor }}
               >
                 로그인
               </button>

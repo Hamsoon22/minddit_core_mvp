@@ -281,6 +281,14 @@ ${link}
   }
 
   async function onCopyProgramLink(session: ProgramSession) {
+      if (!(session.linkSharingEnabled ?? true)) {
+        window.dispatchEvent(
+          new CustomEvent("minddit:toast", {
+            detail: { message: "활성화된 링크가 없습니다.", tone: "error" },
+          })
+        );
+        return;
+      }
     const link = `${window.location.origin}/s/${session.joinCode}`;
     try {
       await navigator.clipboard.writeText(link);
@@ -301,12 +309,9 @@ ${link}
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="dashboard-sticky-header-compact mb-0 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">프로그램 관리</h1>
-          <p className="mt-2 text-sm text-gray-500">
-            운영 중인 프로그램과 세션 상태를 한눈에 관리하세요.
-          </p>
+          <h1 className="text-[1.7rem] font-bold text-gray-900">프로그램 관리</h1>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -349,12 +354,14 @@ ${link}
 
           <Link
             href="/sessions/new"
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#485763] px-4 text-sm font-medium text-white transition hover:bg-[#3f4c56]"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#292929] px-4 text-sm font-medium text-white transition hover:bg-[#1f1f1f]"
           >
             + 새 프로그램
           </Link>
         </div>
       </div>
+
+      <p className="mb-6 mt-0.5 text-sm text-gray-500">운영 중인 프로그램과 상태를 한눈에 관리하세요.</p>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {[
@@ -398,7 +405,12 @@ ${link}
                 type="button"
                 onClick={() => onCopyProgramLink(s)}
                 aria-label="프로그램 링크 복사"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 transition hover:bg-gray-100"
+                  disabled={!(s.linkSharingEnabled ?? true)}
+                  className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md transition ${
+                    s.linkSharingEnabled ?? true
+                      ? "border border-gray-300 bg-white text-gray-600 hover:bg-gray-100"
+                      : "border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+                  }`}
               >
                 <span className="text-[18px] leading-none" aria-hidden="true">🔗</span>
               </button>
@@ -468,7 +480,7 @@ ${link}
                   <button
                     type="button"
                     onClick={() => setMessageSession(null)}
-                    className="-translate-y-0.5 text-[26px] font-medium leading-none text-gray-700 hover:text-gray-900"
+                    className="-translate-y-0.5 text-[30px] font-medium leading-none text-gray-700 hover:text-gray-900"
                     aria-label="닫기"
                   >
                     ×

@@ -108,10 +108,10 @@ export default function Sidebar({
                 key={href}
                 href={href}
                 className={cn(
-                  "block text-[16px] rounded-xl px-5 py-3 transition-colors",
+                  "block text-[19px] rounded-xl px-5 py-3 transition-colors",
                   active
-                    ? "bg-gray-100 text-gray-900 font-bold"
-                    : "text-gray-400 hover:text-gray-600"
+                    ? "bg-gray-200 text-gray-900 font-bold"
+                    : "text-gray-500 hover:text-gray-700"
                 )}
               >
                 {label}
@@ -158,19 +158,19 @@ export default function Sidebar({
         >
           {profileImage ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={profileImage} alt="프로필 이미지" className="h-9 w-9 rounded-full object-cover shrink-0" />
+            <img src={profileImage} alt="프로필 이미지" className="h-[50px] w-[50px] rounded-full object-cover shrink-0" />
           ) : (
             <Image
               src="/profile-avatar.svg"
               alt="프로필 이미지"
-              width={36}
-              height={36}
+              width={50}
+              height={50}
               className="rounded-full shrink-0"
             />
           )}
           <div className="min-w-0 flex-1 text-left">
-            <p className="text-[15px] font-semibold text-gray-700 truncate">{displayName}</p>
-            <p className="text-sm font-medium text-gray-500 truncate">{displayOrganization}</p>
+            <p className="text-sm font-bold text-gray-700 truncate">{displayName}</p>
+            <p className="text-[15px] font-medium text-gray-500 truncate">{displayOrganization}</p>
           </div>
         </button>
       </div>

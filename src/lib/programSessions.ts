@@ -6,6 +6,7 @@ import type { SessionActivity } from "@/types/activity";
 import type { Participant } from "@/types/participant";
 import type { ProgramMode, ScheduleType } from "@/types/session";
 import type { SessionStatus } from "@/types/session";
+import type { ProgramThemeKey } from "@/types/session";
 
 export type LocalScheduleItem = {
   id: string;
@@ -105,9 +106,12 @@ function deriveStatusByDate(session: ProgramSession): SessionStatus {
 }
 
 function withDerivedStatus(session: ProgramSession): ProgramSession {
+  const derivedStatus = deriveStatusByDate(session);
   return {
     ...session,
-    status: deriveStatusByDate(session),
+    status: derivedStatus,
+    linkSharingEnabled: derivedStatus === "COMPLETED" ? false : (session.linkSharingEnabled ?? true),
+    themeKey: session.themeKey ?? "slate",
   };
 }
 
@@ -203,6 +207,7 @@ export function createProgramSession(input: {
   endDate?: string;
   description?: string;
   mode?: ProgramMode;
+  themeKey?: ProgramThemeKey;
 }): ProgramSession {
   const now = new Date();
   const startDate = input.startDate ?? "";
@@ -220,6 +225,8 @@ export function createProgramSession(input: {
     scheduledAt: startDate ? new Date(startDate) : null,
     startDate: startDate ? new Date(startDate) : null,
     endDate: endDate ? new Date(endDate) : null,
+    linkSharingEnabled: true,
+    themeKey: input.themeKey ?? "slate",
     createdById: "local-user",
     createdAt: now,
     updatedAt: now,
@@ -240,7 +247,8 @@ export function updateProgramSession(
   patch: Partial<
     Pick<
       ProgramSession,
-      "title" | "description" | "expertName" | "mode" | "scheduledAt" | "activities" | "scheduleActivities" | "scheduleType" | "scheduleItems" | "startDate" | "endDate" | "status" | "participants" | "_count"
+      "title" | "description" | "expertName" | "mode" | "scheduledAt" | "activities" | "scheduleActivities" | "scheduleType" | "scheduleItems" | "startDate" | "endDate" | "status" | "participants" | "_count" | "linkSharingEnabled"
+      | "themeKey"
     >
   >
 ): ProgramSession | null {

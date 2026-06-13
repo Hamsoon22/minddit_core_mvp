@@ -1,6 +1,7 @@
 export type SessionStatus = "DRAFT" | "SCHEDULED" | "ACTIVE" | "COMPLETED";
 export type ProgramMode = "IN_PERSON" | "ONLINE" | "HYBRID";
 export type ScheduleType = "WEEKLY" | "DATE_SPECIFIC" | "MONTHLY";
+export type ProgramThemeKey = "slate" | "rose" | "forest" | "teal" | "olive";
 
 export interface Session {
   id: string;
@@ -19,6 +20,8 @@ export interface Session {
   institutionDirections?: string | null;
   institutionPhone?: string | null;
   institutionEmail?: string | null;
+  linkSharingEnabled?: boolean;
+  themeKey?: ProgramThemeKey;
   createdById: string;
   createdAt: Date;
   updatedAt: Date;

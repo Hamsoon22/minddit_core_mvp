@@ -2,53 +2,111 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import type { ProgramSession } from "@/lib/programSessions";
 
-type ScheduleSession = {
+type ScheduleEntry = {
   id: string;
+  key: string;
   title: string;
-  scheduledAt?: string | Date | null;
+  date: Date;
   status: string;
   _count: { participants: number };
 };
 
+function toDayStart(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function isSameDay(left: Date, right: Date) {
+  return left.getFullYear() === right.getFullYear()
+    && left.getMonth() === right.getMonth()
+    && left.getDate() === right.getDate();
+}
+
+function toValidDate(value?: string | Date | null) {
+  if (!value) return null;
+  const date = value instanceof Date ? new Date(value) : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function buildScheduleEntries(session: ProgramSession): ScheduleEntry[] {
+  const entries = session.scheduleItems.flatMap((item) => {
+    if (session.scheduleType === "DATE_SPECIFIC" && item.date) {
+      const date = toValidDate(item.date);
+      return date ? [{ id: session.id, key: `${session.id}:${item.id}`, title: session.title, date, status: session.status, _count: session._count }] : [];
+    }
+
+    if (session.scheduleType === "WEEKLY" && item.weekStart) {
+      const date = toValidDate(item.weekStart);
+      return date ? [{ id: session.id, key: `${session.id}:${item.id}`, title: session.title, date, status: session.status, _count: session._count }] : [];
+    }
+
+    if (session.scheduleType === "MONTHLY" && item.year && item.month) {
+      return [{
+        id: session.id,
+        key: `${session.id}:${item.id}`,
+        title: session.title,
+        date: new Date(item.year, item.month - 1, 1),
+        status: session.status,
+        _count: session._count,
+      }];
+    }
+
+    return [] as ScheduleEntry[];
+  });
+
+  if (entries.length > 0) return entries;
+
+  const fallbackDate = toValidDate(session.startDate ?? session.scheduledAt ?? null);
+  if (!fallbackDate) return [];
+
+  return [{
+    id: session.id,
+    key: `${session.id}:default`,
+    title: session.title,
+    date: fallbackDate,
+    status: session.status,
+    _count: session._count,
+  }];
+}
+
 export default function SchedulePanel({
   sessions,
 }: {
-  sessions: ScheduleSession[];
+  sessions: ProgramSession[];
 }) {
-  const [selectedOffset, setSelectedOffset] = useState(0);
+  const scheduleEntries = useMemo(
+    () => sessions.flatMap((session) => buildScheduleEntries(session)),
+    [sessions]
+  );
 
   const days = useMemo(() => {
-    const today = new Date();
+    const today = toDayStart(new Date());
     return Array.from({ length: 7 }).map((_, index) => {
       const date = new Date(today);
       date.setDate(today.getDate() + index);
 
+      const hasSchedule = scheduleEntries.some((entry) => isSameDay(entry.date, date));
+
       return {
         date,
         day: String(date.getDate()).padStart(2, "0"),
-        weekday: date.toLocaleDateString("en-US", { weekday: "short" }),
+        weekday: date.toLocaleDateString("ko-KR", { weekday: "short" }),
+        hasSchedule,
       };
     });
-  }, []);
+  }, [scheduleEntries]);
 
-  const selectedDate = days[selectedOffset]?.date ?? days[0].date;
+  const [selectedOffset, setSelectedOffset] = useState(0);
 
-  const schedules = sessions
-    .filter((session) => {
-      if (!session.scheduledAt) return false;
+  const clampedOffset = Math.min(selectedOffset, Math.max(days.length - 1, 0));
+  const selectedDate = days[clampedOffset]?.date ?? toDayStart(new Date());
 
-      const date = new Date(session.scheduledAt);
-      return (
-        date.getFullYear() === selectedDate.getFullYear() &&
-        date.getMonth() === selectedDate.getMonth() &&
-        date.getDate() === selectedDate.getDate()
-      );
-    })
+  const schedules = scheduleEntries
+    .filter((entry) => isSameDay(entry.date, selectedDate))
     .sort(
       (a, b) =>
-        new Date(a.scheduledAt!).getTime() -
-        new Date(b.scheduledAt!).getTime()
+        a.date.getTime() - b.date.getTime()
     );
 
   return (
@@ -64,10 +122,10 @@ export default function SchedulePanel({
         </Link>
       </div>
 
-      <div className="mb-6 flex items-center justify-center gap-4">
+      <div className="mb-3 flex items-center justify-center gap-4">
         <button
           className="text-2xl text-gray-300 hover:text-gray-600"
-          onClick={() => setSelectedOffset((prev) => Math.max(0, prev - 1))}
+          onClick={() => setSelectedOffset((prev) => Math.max(0, Math.min(prev, days.length - 1) - 1))}
           aria-label="이전 날짜"
         >
           ‹
@@ -84,9 +142,9 @@ export default function SchedulePanel({
         </button>
       </div>
 
-      <div className="mb-6 grid grid-cols-7 gap-2">
+      <div className="mb-4 grid grid-cols-7 gap-1.5">
         {days.map((item, index) => {
-          const active = index === selectedOffset;
+          const active = index === clampedOffset;
 
           return (
             <button
@@ -94,12 +152,21 @@ export default function SchedulePanel({
               onClick={() => setSelectedOffset(index)}
               className={
                 active
-                  ? "rounded-xl bg-[#485763]/75 px-2 py-3 text-white shadow-md"
-                  : "rounded-xl bg-gray-50 px-2 py-3 text-gray-500 hover:bg-gray-100"
+                  ? "rounded-xl bg-[#485763]/75 px-2 py-2 text-white shadow-md"
+                  : "rounded-xl bg-gray-50 px-2 py-2 text-gray-500 hover:bg-gray-100"
               }
             >
               <p className="text-base font-semibold">{item.day}</p>
               <p className="text-[11px]">{item.weekday}</p>
+              <span
+                className={[
+                  "mx-auto mt-1 block h-2 w-2 rounded-full border",
+                  item.hasSchedule
+                    ? "border-[#ffffff] bg-[#485763]"
+                    : "border-transparent bg-transparent",
+                ].join(" ")}
+                aria-hidden="true"
+              />
             </button>
           );
         })}
@@ -108,16 +175,16 @@ export default function SchedulePanel({
       <div className="space-y-4">
         {schedules.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-8 text-center">
-            <p className="text-sm text-gray-400">선택한 날짜에 예정된 일정이 없습니다.</p>
+            <p className="text-sm text-gray-400">일정이 없습니다.</p>
           </div>
         ) : (
           schedules.map((session) => {
-            const start = new Date(session.scheduledAt!);
+            const start = new Date(session.date);
             const end = new Date(start.getTime() + 60 * 60 * 1000);
 
             return (
               <Link
-                key={session.id}
+                key={session.key}
                 href={`/sessions/${session.id}`}
                 className="block rounded-2xl border border-gray-100 bg-gray-50 p-4 transition hover:bg-gray-100"
               >
@@ -156,7 +223,7 @@ function StatusBadge({ status }: { status: string }) {
       : "진행중";
 
   return (
-    <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+    <span className="inline-flex whitespace-nowrap rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
       {label}
     </span>
   );

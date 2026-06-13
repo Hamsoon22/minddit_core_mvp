@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type ToolPreview = {
@@ -29,21 +28,56 @@ export default function LibraryMobilePreviewPage({
   const router = useRouter();
   const tool = useMemo(() => TOOLS.find((item) => item.id === params.toolId) ?? null, [params.toolId]);
 
+  function openParticipantWindow(toolId: string) {
+    const url = `/s/library/activity/${toolId}`;
+    const width = Math.round(window.screen.availWidth * 0.5);
+    const height = Math.round(window.screen.availHeight * 0.5);
+    const left = Math.round((window.screen.availWidth - width) / 2);
+    const top = Math.round((window.screen.availHeight - height) / 2);
+    const features = [
+      "popup=yes",
+      "resizable=yes",
+      "scrollbars=yes",
+      "menubar=no",
+      "toolbar=no",
+      "location=no",
+      "status=no",
+      `width=${width}`,
+      `height=${height}`,
+      `left=${left}`,
+      `top=${top}`,
+    ].join(",");
+
+    // Open a controllable blank popup first, then force size/position.
+    const popup = window.open("about:blank", "_blank", features);
+    if (!popup) {
+      // Fallback: if popup is blocked, open in a regular new tab.
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    popup.opener = null;
+    popup.resizeTo(width, height);
+    popup.moveTo(left, top);
+    popup.location.replace(url);
+    popup.focus();
+  }
+
   if (!tool) {
     return <div className="text-sm text-gray-500">콘텐츠를 찾을 수 없습니다.</div>;
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="dashboard-sticky-header flex items-center gap-2">
         <button
           type="button"
           onClick={() => router.back()}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-xl font-semibold leading-none text-gray-900 hover:bg-gray-50"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-lg font-semibold leading-none text-gray-900 hover:bg-gray-50"
         >
           ←
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">콘텐츠 미리보기</h1>
+        <h1 className="text-[1.7rem] font-bold text-gray-900">콘텐츠 미리보기</h1>
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-[#f3f5f7] p-4">
@@ -63,15 +97,27 @@ export default function LibraryMobilePreviewPage({
                 className="h-[800px] w-full"
               />
             </div>
-            <Link
-              href={`/s/library/activity/${tool.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => openParticipantWindow(tool.id)}
               className="mt-2 inline-flex h-10 w-full items-center justify-center rounded-xl border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
             >
               참여자 화면 새창으로 보기
-            </Link>
+            </button>
           </div>
+        </div>
+      </div>
+
+      <div className="pointer-events-none fixed bottom-[40px] left-1/2 z-[315] w-full max-w-[430px] -translate-x-1/2 px-[25px]">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#292929] text-white shadow-lg transition hover:opacity-90"
+            aria-label="맨 위로 이동"
+          >
+            ↑
+          </button>
         </div>
       </div>
     </div>

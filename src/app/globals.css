@@ -9,14 +9,47 @@
     --brand: #485763;
   }
   html {
-    font-size: 17px;
+    font-size: 19px;
   }
   body {
     @apply bg-gray-50 text-gray-900 antialiased;
   }
+
+  ::selection {
+    background-color: #485763;
+    color: #ffffff;
+  }
+
+  ::-moz-selection {
+    background-color: #485763;
+    color: #ffffff;
+  }
 }
 
 @layer utilities {
+  .dashboard-sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin-left: -1.5rem;
+    margin-right: -1.5rem;
+    border-bottom: 1px solid rgb(229 231 235 / 0.9);
+    background-color: rgb(249 250 251 / 0.94);
+    padding: 1rem 1.5rem;
+    backdrop-filter: blur(10px);
+  }
+
+  .dashboard-sticky-header-compact {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin-left: -1.5rem;
+    margin-right: -1.5rem;
+    background-color: rgb(249 250 251 / 0.94);
+    padding: 0.75rem 1.5rem 0.5rem;
+    backdrop-filter: blur(10px);
+  }
+
   .material-symbols-outlined {
     font-family: "Material Symbols Outlined";
     font-weight: normal;
@@ -39,18 +72,16 @@
   @keyframes pageDissolve {
     from {
       opacity: 0;
-      transform: translateY(4px);
     }
 
     to {
       opacity: 1;
-      transform: translateY(0);
     }
   }
 
   .page-dissolve {
     animation: pageDissolve 220ms ease-out both;
-    will-change: opacity, transform;
+    will-change: opacity;
   }
 
   @media (prefers-reduced-motion: reduce) {

@@ -68,9 +68,9 @@ export default function JournalPage() {
           <>
             {/* Header */}
             {!isEmbedded && (
-            <div className="mb-6 rounded-xl bg-gray-900 px-6 py-5 text-white">
+            <div className="mb-6 rounded-lg -translate-y-[2px] bg-[#ffffff] px-6 py-5 text-[#292929]">
               <h1 className="mb-1 text-xl font-bold">일기 쓰기</h1>
-              <p className="text-sm text-white/70">
+              <p className="text-sm text-[#4B4B4B]">
                 오늘의 생각과 감정을 자유롭게 기록해보세요.
               </p>
             </div>
@@ -127,9 +127,9 @@ export default function JournalPage() {
           <>
             {/* Saved state */}
             {!isEmbedded && (
-            <div className="mb-6 rounded-xl bg-gray-900 px-6 py-5 text-white">
+            <div className="mb-6 rounded-lg -translate-y-[2px] bg-[#ffffff] px-6 py-5 text-[#292929]">
               <h1 className="mb-1 text-xl font-bold">일기 쓰기</h1>
-              <p className="text-sm text-white/70">오늘의 기록이 저장되었습니다.</p>
+              <p className="text-sm text-[#4B4B4B]">오늘의 기록이 저장되었습니다.</p>
             </div>
             )}
 
@@ -148,6 +148,21 @@ export default function JournalPage() {
           </>
         )}
       </div>
+
+      {!isEmbedded && (
+        <div className="pointer-events-none fixed bottom-[40px] left-1/2 z-[315] w-full max-w-[430px] -translate-x-1/2 px-[25px]">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#292929] text-white shadow-lg transition hover:opacity-90"
+              aria-label="맨 위로 이동"
+            >
+              ↑
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

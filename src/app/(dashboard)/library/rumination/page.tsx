@@ -89,7 +89,7 @@ function RadioRow({
       {OPTIONS.map((opt) => (
         <label
           key={opt.value}
-          className="flex flex-1 min-w-[120px] cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 py-2.5 text-xs text-gray-600 transition hover:border-gray-400 hover:bg-gray-50 has-[:checked]:border-gray-900 has-[:checked]:bg-gray-900 has-[:checked]:text-white"
+          className="flex flex-1 min-w-[120px] cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 py-2.5 text-xs text-gray-600 transition hover:border-gray-400 hover:bg-gray-50 has-[:checked]:border-[#292929] has-[:checked]:bg-[#292929] has-[:checked]:text-white"
         >
           <input
             type="radio"
@@ -180,12 +180,12 @@ export default function RuminationPage() {
         {!submitted ? (
           <>
             {/* Header block */}
-            <div className="mb-6 rounded-xl bg-gray-900 px-6 py-5 text-white">
+            <div className="mb-6 rounded-lg -translate-y-[2px] bg-[#ffffff] px-6 py-5 text-[#292929]">
               <h1 className="mb-1 text-xl font-bold">나는 우울할 때…</h1>
-              <p className="text-sm leading-relaxed text-white/70">
+              <p className="text-sm leading-relaxed text-[#4B4B4B]">
                 사람들은 우울할 때 여러 가지 생각과 행동을 하게 됩니다.
                 아래 문항들을 읽고 우울할 때 이러한 생각이나 행동을{" "}
-                <span className="font-medium text-white underline underline-offset-2">
+                <span className="font-medium text-[#292929] underline underline-offset-2">
                   어느 정도 하는지
                 </span>{" "}
                 선택해 주세요.
@@ -223,9 +223,9 @@ export default function RuminationPage() {
         ) : (
           <>
             {/* Result header */}
-            <div className="mb-6 rounded-xl bg-gray-900 px-6 py-5 text-white">
+            <div className="mb-6 rounded-lg -translate-y-[2px] bg-[#ffffff] px-6 py-5 text-[#292929]">
               <h1 className="mb-1 text-xl font-bold">반추 척도 결과</h1>
-              <p className="text-sm text-white/70">T점수 기준 (평균=50, SD=10)</p>
+              <p className="text-sm text-[#4B4B4B]">T점수 기준 (평균=50, SD=10)</p>
             </div>
 
             {/* Score cards */}
@@ -272,6 +272,21 @@ export default function RuminationPage() {
           </>
         )}
       </div>
+
+      {!isEmbedded && (
+        <div className="pointer-events-none fixed bottom-[40px] left-1/2 z-[315] w-full max-w-[430px] -translate-x-1/2 px-[25px]">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#292929] text-white shadow-lg transition hover:opacity-90"
+              aria-label="맨 위로 이동"
+            >
+              ↑
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

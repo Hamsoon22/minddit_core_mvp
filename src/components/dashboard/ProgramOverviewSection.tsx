@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import SchedulePanel from "@/components/dashboard/SchedulePanel";
-import { getProgramSessions, type ProgramSession } from "@/lib/programSessions";
+import { getProgramDateSummary, getProgramSessions, type ProgramSession } from "@/lib/programSessions";
 
 const statusLabel: Record<string, string> = {
   DRAFT: "임시 저장",
@@ -19,25 +20,41 @@ const statusColor: Record<string, string> = {
   COMPLETED: "bg-gray-50 text-gray-500",
 };
 
-function formatDate(date?: Date | string | null) {
-  if (!date) return "-";
-
-  if (typeof date === "string") {
-    const direct = date.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-    if (direct) {
-      return `${direct[1]}.${direct[2].padStart(2, "0")}.${direct[3].padStart(2, "0")}`;
+function getComparableDate(session: ProgramSession) {
+  const scheduleDates = session.scheduleItems.flatMap((item) => {
+    if (session.scheduleType === "DATE_SPECIFIC" && item.date) return [new Date(item.date)];
+    if (session.scheduleType === "WEEKLY" && item.weekStart) return [new Date(item.weekStart)];
+    if (session.scheduleType === "MONTHLY" && item.year && item.month) {
+      return [new Date(item.year, item.month - 1, 1)];
     }
+    return [] as Date[];
+  }).filter((date) => !Number.isNaN(date.getTime()));
+
+  if (session.startDate) return session.startDate.getTime();
+  if (scheduleDates.length > 0) {
+    return Math.max(...scheduleDates.map((date) => date.getTime()));
+  }
+  if (session.scheduledAt) return session.scheduledAt.getTime();
+  return session.createdAt.getTime();
+}
+
+function getHomeDateSummary(session: ProgramSession) {
+  const hasExplicitDate = Boolean(
+    session.startDate
+    || session.endDate
+    || session.scheduledAt
+    || session.scheduleItems.some((item) => item.date || item.weekStart || item.weekEnd || item.year || item.month)
+  );
+
+  if (session.status === "DRAFT" && !hasExplicitDate) {
+    return "-";
   }
 
-  const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime())) return "-";
-  const yyyy = parsed.getFullYear();
-  const mm = String(parsed.getMonth() + 1).padStart(2, "0");
-  const dd = String(parsed.getDate()).padStart(2, "0");
-  return `${yyyy}.${mm}.${dd}`;
+  return getProgramDateSummary(session);
 }
 
 export default function ProgramOverviewSection() {
+  const router = useRouter();
   const [sessions, setSessions] = useState<ProgramSession[]>([]);
 
   useEffect(() => {
@@ -53,20 +70,31 @@ export default function ProgramOverviewSection() {
     () => sessions.filter((session) => session.status === "SCHEDULED"),
     [sessions]
   );
+  const sortedSessions = useMemo(
+    () => [...sessions].sort((a, b) => getComparableDate(b) - getComparableDate(a)),
+    [sessions]
+  );
 
   return (
     <>
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <SummaryCard title="전체 프로그램" value={totalSessions} href="/sessions" variant="filled" />
-        <SummaryCard title="전체 참여자" value={totalParticipants} href="/participants" variant="filled" />
-        <SummaryCard title="프로그램 진행(예정)" value={scheduledSessions.length} href="/sessions" />
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_420px]">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <SummaryCard title="전체 프로그램" value={totalSessions} href="/sessions" variant="filled" />
+          <SummaryCard title="전체 참여자" value={totalParticipants} href="/participants" variant="filled" />
+        </div>
+        <div>
+          <SummaryCard title="프로그램 진행(예정)" value={scheduledSessions.length} href="/sessions" />
+        </div>
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_420px]">
         <div className="h-full rounded-xl border border-gray-200 bg-white p-6">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="text-base font-semibold text-gray-900">최근 프로그램</h2>
-            <Link href="/sessions" className="text-sm text-gray-400 hover:text-gray-700">
+            <Link
+              href="/sessions"
+              className="-mt-1 rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-500 hover:bg-gray-50"
+            >
               전체 보기
             </Link>
           </div>
@@ -83,8 +111,19 @@ export default function ProgramOverviewSection() {
               </thead>
 
               <tbody className="divide-y divide-gray-100 bg-white">
-                {sessions.slice(0, 6).map((session) => (
-                  <tr key={session.id} className="hover:bg-gray-50">
+                {sortedSessions.slice(0, 6).map((session) => (
+                  <tr
+                    key={session.id}
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => router.push(`/sessions/${session.id}`)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        router.push(`/sessions/${session.id}`);
+                      }
+                    }}
+                    tabIndex={0}
+                  >
                     <td className="px-4 py-4 align-middle">
                       <Link href={`/sessions/${session.id}`} className="font-medium text-gray-800 hover:text-gray-600">
                         {session.title}
@@ -96,7 +135,7 @@ export default function ProgramOverviewSection() {
                     <td className="w-24 px-4 py-4 align-middle text-center text-gray-500">
                       {session._count.participants}명
                     </td>
-                    <td className="px-4 py-4 align-middle text-gray-500">{formatDate(session.scheduledAt)}</td>
+                    <td className="px-4 py-4 align-middle text-gray-500">{getHomeDateSummary(session)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -104,7 +143,7 @@ export default function ProgramOverviewSection() {
           </div>
         </div>
 
-        <SchedulePanel sessions={sessions} />
+        <SchedulePanel sessions={sortedSessions} />
       </section>
     </>
   );
@@ -127,8 +166,8 @@ function SummaryCard({
     <Link
       href={href}
       className={filled
-        ? "rounded-xl border border-[#292929] bg-gradient-to-b from-[#485763] to-[#292929] p-5 transition-opacity hover:opacity-85"
-        : "rounded-xl border border-gray-200 bg-white p-5 transition hover:border-gray-300 hover:shadow-sm"
+        ? "block h-full w-full rounded-xl border border-[#292929] bg-gradient-to-b from-[#485763] to-[#292929] p-5 transition-opacity hover:opacity-85"
+        : "block h-full w-full rounded-xl border border-gray-200 bg-white p-5 transition hover:border-gray-300 hover:shadow-sm"
       }
     >
       <div className="flex items-center justify-between gap-3">
@@ -149,7 +188,7 @@ function StatusBadge({ status }: { status: string }) {
   const colorClass = statusColor[status] ?? "bg-gray-100 text-gray-600";
 
   return (
-    <span className={`inline-flex min-w-[56px] justify-center rounded-full px-2.5 py-1 text-xs font-medium ${colorClass}`}>
+    <span className={`inline-flex w-[74px] justify-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${colorClass}`}>
       {label}
     </span>
   );
