@@ -212,9 +212,10 @@ export function createProgramSession(input: {
   const now = new Date();
   const startDate = input.startDate ?? "";
   const endDate = input.endDate ?? "";
+  const sessionId = `local-${Date.now()}`;
 
   const next: ProgramSession = {
-    id: `local-${Date.now()}`,
+    id: sessionId,
     title: input.title,
     description: input.description ?? null,
     expertName: "서윤희",
@@ -232,8 +233,17 @@ export function createProgramSession(input: {
     updatedAt: now,
     activities: [],
     scheduleActivities: {},
-    participants: [],
-    _count: { participants: 0 },
+    participants: [
+      {
+        id: `${sessionId}-p1`,
+        name: "참여자 1",
+        sessionId,
+        attended: false,
+        joinedAt: null,
+        createdAt: now,
+      },
+    ],
+    _count: { participants: 1 },
     scheduleItems: [],
   };
 

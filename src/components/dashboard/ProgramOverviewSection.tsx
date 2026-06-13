@@ -15,8 +15,8 @@ const statusLabel: Record<string, string> = {
 
 const statusColor: Record<string, string> = {
   DRAFT: "border border-gray-300 bg-transparent text-gray-600",
-  SCHEDULED: "bg-blue-50 text-blue-700",
-  ACTIVE: "bg-green-50 text-green-700",
+  SCHEDULED: "bg-[#DDEFF9] text-[#0688D3]",
+  ACTIVE: "bg-[#E6ECE0] text-[#68814E]",
   COMPLETED: "bg-gray-50 text-gray-500",
 };
 
@@ -188,7 +188,7 @@ function StatusBadge({ status }: { status: string }) {
   const colorClass = statusColor[status] ?? "bg-gray-100 text-gray-600";
 
   return (
-    <span className={`inline-flex w-[74px] justify-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${colorClass}`}>
+    <span className={`inline-flex w-[74px] justify-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${colorClass}`}>
       {label}
     </span>
   );

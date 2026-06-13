@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { mockSessions } from "@/lib/mock";
 import { getProgramSessions, type ProgramSession } from "@/lib/programSessions";
-import { getProgramTheme } from "@/lib/programTheme";
+import { getProgramLinkTheme } from "@/lib/programTheme";
 
 function withAlpha(hexColor: string, alpha: number) {
   const normalized = hexColor.replace("#", "");
@@ -71,7 +71,7 @@ export default function ParticipantLandingPage({ params }: { params: { code: str
 
   const organizationName = session.institutionName?.trim() || "마인딧센터";
   const description = session.description?.trim() || "프로그램 설명이 없습니다.";
-  const theme = getProgramTheme(session.themeKey);
+  const theme = getProgramLinkTheme(session.themeKey);
 
   return (
     <div className="min-h-screen bg-[#f4f6f7]">

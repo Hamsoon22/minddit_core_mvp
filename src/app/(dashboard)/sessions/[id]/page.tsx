@@ -27,8 +27,8 @@ const statusLabel: Record<string, string> = {
 
 const statusColor: Record<string, string> = {
   DRAFT: "border border-gray-300 bg-transparent text-gray-600",
-  SCHEDULED: "bg-blue-50 text-blue-700",
-  ACTIVE: "bg-green-50 text-green-700",
+  SCHEDULED: "bg-[#DDEFF9] text-[#0688D3]",
+  ACTIVE: "bg-[#E6ECE0] text-[#68814E]",
   COMPLETED: "bg-gray-200 text-gray-700",
 };
 
@@ -363,9 +363,19 @@ ${link}
   }
 
   function onOpenActivity(activity: SessionActivity) {
-    if (!session) return;
-    const mobileLink = `${window.location.origin}/s/${session.joinCode}/activity/${activity.id}`;
-    window.open(mobileLink, "_blank", "noopener,noreferrer");
+    const syncedActivity = syncSessionActivityFromCatalog(activity);
+    if (syncedActivity.content.startsWith("/library/")) {
+      const slug = syncedActivity.content.replace("/library/", "").split("/")[0];
+      router.push(`/library/preview/${slug}`);
+      return;
+    }
+
+    if (syncedActivity.content.startsWith("/")) {
+      router.push(syncedActivity.content);
+      return;
+    }
+
+    window.location.href = syncedActivity.content;
   }
 
   function onDownloadProgramStatsCsv() {
@@ -537,7 +547,7 @@ ${link}
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="dashboard-sticky-header mb-0 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <button
@@ -608,7 +618,7 @@ ${link}
                 )}
               </button>
             </div>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusColor[session.status]}`}>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusColor[session.status]}`}>
               {statusLabel[session.status]}
             </span>
           </div>
@@ -618,7 +628,7 @@ ${link}
           <button
             type="button"
             onClick={openParticipantModal}
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-[#292929] bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
           >
             참여자 편집
           </button>

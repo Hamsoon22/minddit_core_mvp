@@ -34,10 +34,10 @@ const TOOL_CATEGORIES: { value: ToolCategory; label: string }[] = [
 ];
 
 const CATEGORY_BADGE: Record<Exclude<ToolCategory, "all">, string> = {
-  assessment: "bg-blue-50 text-blue-700",
-  workshop:   "bg-purple-50 text-purple-700",
-  video:      "bg-amber-50 text-amber-700",
-  worksheet:  "bg-green-50 text-green-700",
+  assessment: "bg-[#DDEFF9] text-[#0688D3]",
+  workshop:   "bg-[#E6ECE0] text-[#68814E]",
+  video:      "bg-[#F9EAEF] text-[#AD4E70]",
+  worksheet:  "bg-[#E3EFEE] text-[#417572]",
 };
 
 const CATEGORY_LABEL: Record<Exclude<ToolCategory, "all">, string> = {
@@ -292,8 +292,8 @@ export default function ContentToolsSection() {
             type="search"
             value={toolSearch}
             onChange={(e) => setToolSearch(e.target.value)}
-            placeholder="도구 검색···"
-            className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-8 pr-3 text-xs text-gray-700 placeholder-gray-500 outline-none transition focus:border-gray-400"
+            placeholder="검색어를 입력하세요"
+            className="w-full rounded-lg border border-[#292929] bg-white py-2 pl-8 pr-3 text-xs text-gray-700 placeholder-gray-500 outline-none transition focus:border-[#292929]"
           />
         </div>
       </div>

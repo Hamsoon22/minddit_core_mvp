@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { getProgramSessions } from "@/lib/programSessions";
-import { getProgramTheme } from "@/lib/programTheme";
+import { getProgramLinkTheme } from "@/lib/programTheme";
 
 
 type ToolPreview = {
@@ -67,9 +67,9 @@ export default function LibraryActivityPreviewPage({
   const searchParams = useSearchParams();
   const code = searchParams.get("code");
   const theme = useMemo(() => {
-    if (!code) return getProgramTheme();
+    if (!code) return getProgramLinkTheme();
     const linkedSession = getProgramSessions().find((item) => item.joinCode === code);
-    return getProgramTheme(linkedSession?.themeKey);
+    return getProgramLinkTheme(linkedSession?.themeKey);
   }, [code]);
 
   const tool = TOOLS.find((item) => item.id === params.toolId) ?? null;
@@ -102,7 +102,7 @@ export default function LibraryActivityPreviewPage({
             <iframe
               title={`${tool.title} 참여자 화면`}
               src={`${tool.href}?embed=1`}
-              className="h-[800px] w-full"
+              className="h-[812px] w-full"
             />
           </div>
         </div>

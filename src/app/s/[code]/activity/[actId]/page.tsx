@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { mockSessions } from "@/lib/mock";
 import { getProgramSessions, type ProgramSession } from "@/lib/programSessions";
-import { getProgramTheme } from "@/lib/programTheme";
+import { getProgramLinkTheme } from "@/lib/programTheme";
 import type { SessionActivity } from "@/types/activity";
 import { getActivityTypeMeta, syncSessionActivityFromCatalog } from "@/lib/contentCatalog";
 import {
@@ -87,7 +87,7 @@ export default function ActivityPage({ params }: { params: { code: string; actId
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
-  const theme = useMemo(() => getProgramTheme(session?.themeKey), [session?.themeKey]);
+  const theme = useMemo(() => getProgramLinkTheme(session?.themeKey), [session?.themeKey]);
 
   useEffect(() => {
     const stored = getProgramSessions().find((s) => s.joinCode === params.code) ?? null;
@@ -242,7 +242,7 @@ export default function ActivityPage({ params }: { params: { code: string; actId
       <div className="mx-auto w-full max-w-[430px]">
         {loggedInUser && (
           <div className="mb-0 flex h-6 w-full items-center justify-center rounded-none px-3 text-xs text-white" style={{ backgroundColor: theme.accentColor }}>
-            '{loggedInUser}'으로 로그인중입니다.
+            '{loggedInUser}'으로 로그인중···
           </div>
         )}
 
@@ -306,7 +306,7 @@ export default function ActivityPage({ params }: { params: { code: string; actId
 
                 {(sectionActivities[section.id] ?? []).length === 0 && (
                   <div className="rounded-lg border-2 border-dashed border-gray-200 py-8 text-center">
-                    등록된 활동이 없습니다.
+                    <p className="text-xs text-gray-300">등록된 활동이 없습니다.</p>
                   </div>
                 )}
               </div>

@@ -17,8 +17,8 @@ import { getExistingParticipantAccounts, getParticipantAccounts } from "@/lib/pr
 const statusLabel: Record<string, string> = { DRAFT: "임시 저장", SCHEDULED: "예정", ACTIVE: "진행중", COMPLETED: "완료" };
 const statusColor: Record<string, string> = {
   DRAFT: "border border-gray-300 bg-transparent text-gray-600",
-  SCHEDULED: "bg-blue-50 text-blue-700",
-  ACTIVE: "bg-green-50 text-green-700",
+  SCHEDULED: "bg-[#DDEFF9] text-[#0688D3]",
+  ACTIVE: "bg-[#E6ECE0] text-[#68814E]",
   COMPLETED: "bg-gray-200 text-gray-700",
 };
 
@@ -417,7 +417,7 @@ ${link}
               <Link href={`/sessions/${s.id}`} className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="font-bold text-gray-900 text-base">{s.title}</p>
-                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColor[s.status]}`}>
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${statusColor[s.status]}`}>
                     {statusLabel[s.status]}
                   </span>
                 </div>
