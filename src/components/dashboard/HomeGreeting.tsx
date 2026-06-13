@@ -38,7 +38,7 @@ export default function HomeGreeting({ fallbackName }: HomeGreetingProps) {
   }, [fallbackName]);
 
   return (
-    <h1 className="text-3xl font-medium text-gray-900">
+    <h1 className="text-[1.7rem] font-medium text-gray-900">
       <span className="font-bold">{displayName} 전문가님,</span> 반갑습니다.
     </h1>
   );

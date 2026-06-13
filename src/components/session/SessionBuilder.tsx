@@ -13,6 +13,7 @@ import {
 import type { ActivityType, SessionActivity } from "@/types/activity";
 import type { ProgramSession } from "@/lib/programSessions";
 import { CONTENT_CATALOG, getActivityTypeMeta } from "@/lib/contentCatalog";
+import { getProgramTheme } from "@/lib/programTheme";
 
 const CONTENT_OPTIONS: {
   id: string;
@@ -163,6 +164,7 @@ export default function SessionBuilder({ session, onSaveActivities }: Props) {
   const totalMin = currentActivities.reduce((sum, activity) => sum + activity.durationMin, 0);
   const selectedSection = scheduleSections.find((section) => section.id === selectedSectionId) ?? scheduleSections[0];
   const participantCount = session._count?.participants ?? session.participants?.length ?? 0;
+  const selectedTheme = getProgramTheme(session.themeKey);
 
   function getSectionLabel(section: ProgramSession["scheduleItems"][number] | { id: string; label: string }) {
     if (session.scheduleType === "DATE_SPECIFIC") {
@@ -233,7 +235,7 @@ export default function SessionBuilder({ session, onSaveActivities }: Props) {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="dashboard-sticky-header mb-6 flex items-center justify-between">
         <div>
           <div className="mb-1 flex items-center gap-2">
             <button
@@ -243,14 +245,14 @@ export default function SessionBuilder({ session, onSaveActivities }: Props) {
             >
               ←
             </button>
-            <h1 className="text-2xl font-semibold text-gray-900">{session.title}</h1>
+            <h1 className="text-[1.7rem] font-semibold text-gray-900">{session.title}</h1>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => router.push(`/sessions/${session.id}`)}
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-[#292929] bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
           >
             취소
           </button>
@@ -268,7 +270,7 @@ export default function SessionBuilder({ session, onSaveActivities }: Props) {
               );
               router.push(`/sessions/${session.id}`);
             }}
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#485763] px-4 text-sm font-medium text-white transition hover:bg-[#3f4c56]"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#292929] px-4 text-sm font-medium text-white transition hover:bg-[#1f1f1f]"
           >
             활동 저장
           </button>
@@ -276,17 +278,17 @@ export default function SessionBuilder({ session, onSaveActivities }: Props) {
       </div>
 
       <div className="mb-4 space-y-4">
-        <div className="rounded-lg border border-[#292929] bg-[#292929] px-4 py-3 text-sm text-white">
+        <div className="rounded-lg px-4 py-3 text-sm" style={{ backgroundColor: selectedTheme.panelColor, color: selectedTheme.textColor }}>
           <div className="flex items-center justify-between gap-3">
             <p><span className="font-bold">프로그램 기간</span> {formatDate(session.startDate)} ~ {formatDate(session.endDate)}</p>
             <div className="flex items-center gap-2">
-              <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-xs font-medium text-white">
+              <span className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ backgroundColor: selectedTheme.panelSoftColor, color: selectedTheme.textColor }}>
                 참여자수 {participantCount}명
               </span>
-              <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-xs font-medium text-white">
+              <span className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ backgroundColor: selectedTheme.panelSoftColor, color: selectedTheme.textColor }}>
                 {getModeLabel(session.mode)}
               </span>
-              <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-xs font-medium text-white">
+              <span className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ backgroundColor: selectedTheme.panelSoftColor, color: selectedTheme.textColor }}>
                 {(session.expertName ?? "서윤희")} 전문가
               </span>
             </div>

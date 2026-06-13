@@ -17,6 +17,8 @@ interface ContentTool {
   lang: string[];
   href: string;
   status: "available" | "coming_soon";
+  source?: string;
+  license?: string;
 }
 
 // ────────────────────────────────────────────────
@@ -32,10 +34,10 @@ const TOOL_CATEGORIES: { value: ToolCategory; label: string }[] = [
 ];
 
 const CATEGORY_BADGE: Record<Exclude<ToolCategory, "all">, string> = {
-  assessment: "bg-blue-50 text-blue-700",
-  workshop:   "bg-purple-50 text-purple-700",
-  video:      "bg-amber-50 text-amber-700",
-  worksheet:  "bg-green-50 text-green-700",
+  assessment: "bg-[#DDEFF9] text-[#0688D3]",
+  workshop:   "bg-[#E6ECE0] text-[#68814E]",
+  video:      "bg-[#F9EAEF] text-[#AD4E70]",
+  worksheet:  "bg-[#E3EFEE] text-[#417572]",
 };
 
 const CATEGORY_LABEL: Record<Exclude<ToolCategory, "all">, string> = {
@@ -54,6 +56,8 @@ const TOOLS: ContentTool[] = [
     lang: ["한국어", "English", "မြန်မာ"],
     href: "/library/vlq",
     status: "available",
+    source: "Wilson et al., Valued Living Questionnaire (VLQ)",
+    license: "기관 내부 사용 (원저작권 고지 필요)",
   },
   {
     id: "rumination",
@@ -63,6 +67,8 @@ const TOOLS: ContentTool[] = [
     lang: ["한국어"],
     href: "/library/rumination",
     status: "available",
+    source: "Nolen-Hoeksema & Morrow, Rumination Scale",
+    license: "비상업적 사용",
   },
   {
     id: "aaq",
@@ -72,6 +78,8 @@ const TOOLS: ContentTool[] = [
     lang: ["한국어"],
     href: "/library/aaq",
     status: "available",
+    source: "Bond et al., AAQ-II",
+    license: "원저작권자 고지 후 사용",
   },
   {
     id: "burnout",
@@ -81,6 +89,8 @@ const TOOLS: ContentTool[] = [
     lang: ["한국어", "English", "မြန်မာ"],
     href: "/library/burnout",
     status: "available",
+    source: "Maslach Burnout Inventory-General Survey",
+    license: "라이선스 확인 필요",
   },
   {
     id: "journal",
@@ -90,6 +100,8 @@ const TOOLS: ContentTool[] = [
     lang: ["한국어"],
     href: "/library/journal",
     status: "available",
+    source: "Minddit Core 자체 제작 템플릿",
+    license: "내부 사용 허용",
   },
   {
     id: "leaf",
@@ -99,6 +111,8 @@ const TOOLS: ContentTool[] = [
     lang: ["한국어"],
     href: "/library/leaf",
     status: "available",
+    source: "ACT defusion exercise adaptation",
+    license: "내부 사용 허용",
   },
   {
     id: "breathing",
@@ -162,14 +176,11 @@ const TOOLS: ContentTool[] = [
 
 function ToolCard({ tool }: { tool: ContentTool }) {
   const available = tool.status === "available";
-  return (
-    <div
-      className={`group flex flex-col rounded-xl border bg-white p-5 transition ${
-        available
-          ? "border-gray-200 hover:border-gray-300 hover:shadow-sm"
-          : "border-gray-100 opacity-55"
-      }`}
-    >
+  const metaLabel = tool.source ? "출처" : tool.license ? "라이센스" : "출처";
+  const metaText = tool.source ?? tool.license ?? "예시 정보";
+
+  const cardBody = (
+    <>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${CATEGORY_BADGE[tool.category]}`}>
           {CATEGORY_LABEL[tool.category]}
@@ -182,6 +193,15 @@ function ToolCard({ tool }: { tool: ContentTool }) {
       <h3 className="mb-1.5 text-sm font-semibold text-gray-900">{tool.title}</h3>
       <p className="mb-4 flex-1 text-xs leading-relaxed text-gray-500">{tool.description}</p>
 
+      <div className="mb-4 border-t border-gray-200 pt-3" style={{ minHeight: 36 }}>
+        <div className="flex items-center gap-2 text-[11px] text-gray-500">
+          <span className="inline-flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-full border border-gray-300 bg-gray-50 text-[9px] font-semibold text-gray-500">
+            i
+          </span>
+          <p className="truncate whitespace-nowrap">{metaLabel} : {metaText}</p>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-wrap gap-1">
           {tool.lang.map((l) => (
@@ -191,21 +211,37 @@ function ToolCard({ tool }: { tool: ContentTool }) {
           ))}
         </div>
         {available ? (
-          <Link
-            href={`/library/preview/${tool.id}`}
-            className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-gray-900 hover:bg-gray-900 hover:text-white"
-          >
+          <span className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition group-hover:border-gray-900 group-hover:bg-gray-900 group-hover:text-white">
             열기
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M9 6L15 12L9 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </Link>
+          </span>
         ) : (
           <span className="shrink-0 rounded-lg border border-gray-100 px-3 py-1.5 text-xs text-gray-300">
             준비 중
           </span>
         )}
       </div>
+    </>
+  );
+
+  if (available) {
+    return (
+      <Link
+        href={`/library/preview/${tool.id}`}
+        className="group flex h-full flex-col rounded-xl border border-gray-200 bg-white p-5 transition hover:border-gray-300 hover:shadow-sm"
+      >
+        {cardBody}
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      className="group flex flex-col rounded-xl border border-gray-100 bg-white p-5 opacity-55 transition"
+    >
+      {cardBody}
     </div>
   );
 }
@@ -236,13 +272,11 @@ export default function ContentToolsSection() {
   }, [activeCategory, toolSearch]);
 
   return (
-    <section aria-label="콘텐츠 관리" className="flex flex-col gap-4">
-
+    <div>
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="dashboard-sticky-header-compact mb-0 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">콘텐츠 관리</h1>
-          <p className="mt-2 text-sm text-gray-500">워크샵에서 사용할 도구를 선택하세요.</p>
+          <h1 className="text-[1.7rem] font-bold text-gray-900">콘텐츠 관리</h1>
         </div>
 
         {/* Search */}
@@ -258,28 +292,30 @@ export default function ContentToolsSection() {
             type="search"
             value={toolSearch}
             onChange={(e) => setToolSearch(e.target.value)}
-            placeholder="도구 검색···"
-            className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-8 pr-3 text-xs text-gray-700 placeholder-gray-500 outline-none transition focus:border-gray-400"
+            placeholder="검색어를 입력하세요"
+            className="w-full rounded-lg border border-[#292929] bg-white py-2 pl-8 pr-3 text-xs text-gray-700 placeholder-gray-500 outline-none transition focus:border-[#292929]"
           />
         </div>
       </div>
 
+      <p className="mb-6 mt-0.5 text-sm text-gray-500">정신건강 프로그램에 사용할 활동을 관리하세요.</p>
+
       {/* Category tabs */}
-      <div className="flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         {TOOL_CATEGORIES.map(({ value, label }) => (
           <button
             key={value}
             onClick={() => setActiveCategory(value)}
-            className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
               activeCategory === value
-                ? "border-gray-900 bg-gray-900 text-white"
-                : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900"
+                ? "border-[#485763] bg-[#485763] text-white"
+                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
             }`}
           >
             {label}
             <span
-              className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${
-                activeCategory === value ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+              className={`rounded-md px-1.5 py-0.5 text-[10px] leading-none ${
+                activeCategory === value ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
               }`}
             >
               {toolCounts[value]}
@@ -300,6 +336,6 @@ export default function ContentToolsSection() {
           ))}
         </div>
       )}
-    </section>
+    </div>
   );
 }
