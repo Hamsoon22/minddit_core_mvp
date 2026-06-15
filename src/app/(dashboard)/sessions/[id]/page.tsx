@@ -364,18 +364,29 @@ ${link}
 
   function onOpenActivity(activity: SessionActivity) {
     const syncedActivity = syncSessionActivityFromCatalog(activity);
-    if (syncedActivity.content.startsWith("/library/")) {
-      const slug = syncedActivity.content.replace("/library/", "").split("/")[0];
+    const content = syncedActivity.content ?? "";
+  
+    if (!content) {
+      window.dispatchEvent(
+        new CustomEvent("minddit:toast", {
+          detail: { message: "연결된 콘텐츠가 없습니다.", tone: "error" },
+        })
+      );
+      return;
+    }
+  
+    if (content.startsWith("/library/")) {
+      const slug = content.replace("/library/", "").split("/")[0];
       router.push(`/library/preview/${slug}`);
       return;
     }
-
-    if (syncedActivity.content.startsWith("/")) {
-      router.push(syncedActivity.content);
+  
+    if (content.startsWith("/")) {
+      router.push(content);
       return;
     }
-
-    window.location.href = syncedActivity.content;
+  
+    window.location.href = content;
   }
 
   function onDownloadProgramStatsCsv() {
