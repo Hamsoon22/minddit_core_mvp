@@ -9,7 +9,9 @@ import {
   type LocalScheduleItem,
   type ProgramSession,
 } from "@/lib/programSessions";
+import { PROGRAM_THEMES, getProgramTheme } from "@/lib/programTheme";
 import type { ProgramMode, ScheduleType } from "@/types/session";
+import type { ProgramThemeKey } from "@/types/session";
 
 const DRAFT_CREATE_GUARD_KEY = "mindflow.new-session-create-guard";
 const DRAFT_CREATED_ID_KEY = "mindflow.new-session-created-id";
@@ -361,6 +363,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
   const [endDate, setEndDate] = useState("");
   const [scheduleType, setScheduleType] = useState<ScheduleType>("DATE_SPECIFIC");
   const [scheduleItems, setScheduleItems] = useState<DraftScheduleItem[]>([blankItem()]);
+  const [themeKey, setThemeKey] = useState<ProgramThemeKey>("slate");
 
   useEffect(() => {
     const found = getProgramSessionById(params.id);
@@ -378,6 +381,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
     );
     setStartDate(toDateInput(found?.startDate));
     setEndDate(toDateInput(found?.endDate));
+    setThemeKey(getProgramTheme(found?.themeKey).key);
 
     const nextType = (found?.scheduleType ?? "DATE_SPECIFIC") as ScheduleType;
     setScheduleType(nextType);
@@ -440,6 +444,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
         scheduledAt: startDate ? new Date(startDate) : null,
         scheduleType,
         scheduleItems: toLocalScheduleItems(scheduleItems, scheduleType),
+        themeKey,
       });
     }, 150);
 
@@ -454,6 +459,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
     endDate,
     scheduleType,
     scheduleItems,
+    themeKey,
     invalidRange,
     session?.title,
   ]);
@@ -465,6 +471,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
 
   const setupTitle = session?.status === "DRAFT" ? "프로그램 생성" : "프로그램 편집";
   const setupActionLabel = session?.status === "DRAFT" ? "프로그램 생성" : "프로그램 저장";
+  const selectedTheme = getProgramTheme(themeKey);
 
   const hasScheduleRangeViolation =
     scheduleType === "DATE_SPECIFIC"
@@ -640,7 +647,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="dashboard-sticky-header mb-8 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -649,13 +656,13 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
           >
             ←
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">{setupTitle}</h1>
+          <h1 className="text-[1.7rem] font-bold text-gray-900">{setupTitle}</h1>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onCancel}
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-[#292929] bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
           >
             취소
           </button>
@@ -663,24 +670,48 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
             type="button"
             onClick={onCreateProgram}
             disabled={!canCreate}
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#485763] px-4 text-sm font-medium text-white transition hover:bg-[#3f4c56] disabled:opacity-50"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#292929] px-4 text-sm font-medium text-white transition hover:bg-[#1f1f1f] disabled:opacity-50"
           >
             {setupActionLabel}
           </button>
         </div>
       </div>
 
-      <div className="mb-6 rounded-xl bg-[#485763] p-4">
-        <p className="mb-2 text-base font-bold text-white">{title.trim() || session.title}</p>
+      <div className="mb-6 rounded-xl p-4" style={{ backgroundColor: selectedTheme.panelColor }}>
+        <div className="mb-3 flex items-start justify-between gap-4">
+          <p className="text-base font-bold" style={{ color: selectedTheme.textColor }}>{title.trim() || session.title}</p>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            {PROGRAM_THEMES.map((theme) => {
+              const selected = theme.key === themeKey;
+              return (
+                <button
+                  key={theme.key}
+                  type="button"
+                  onClick={() => setThemeKey(theme.key)}
+                  className={`relative h-8 w-8 rounded-full border transition ${selected ? "border-white ring-2 ring-white/80 ring-offset-2 ring-offset-transparent" : "border-white/70 hover:scale-105"}`}
+                  style={{ backgroundColor: theme.panelColor }}
+                  aria-label={`${theme.label} 테마 선택`}
+                >
+                  <span
+                    className="absolute inset-[7px] rounded-full"
+                    style={{ backgroundColor: theme.accentColor }}
+                    aria-hidden="true"
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </div>
         {displayItems.length > 0 ? (
           <div className="space-y-1.5">
             {displayItems.map((item, index) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between rounded-md border border-white/20 bg-white/10 px-3 py-2"
+                className="flex items-center justify-between rounded-md px-3 py-2"
+                style={{ backgroundColor: selectedTheme.panelSoftColor }}
               >
-                <p className="text-sm font-bold text-white">{item.label || `${index + 1}번째 섹션`}</p>
-                <p className="text-sm font-semibold text-gray-100">
+                <p className="text-sm font-bold" style={{ color: selectedTheme.textColor }}>{item.label || `${index + 1}번째 섹션`}</p>
+                <p className="text-sm font-semibold" style={{ color: selectedTheme.textColor, opacity: 0.88 }}>
                   {scheduleType === "DATE_SPECIFIC" && formatDate(item.date)}
                   {scheduleType === "WEEKLY" && `${formatDate(item.weekStart)} ~ ${formatDate(item.weekEnd)}`}
                   {scheduleType === "MONTHLY" && (item.year && item.month ? `${item.year}년 ${item.month}월` : "-")}
@@ -689,7 +720,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
             ))}
           </div>
         ) : (
-          <p className="text-sm font-semibold text-gray-100">아직 추가된 일정이 없습니다.</p>
+          <p className="text-sm font-semibold" style={{ color: selectedTheme.textColor, opacity: 0.9 }}>아직 추가된 일정이 없습니다.</p>
         )}
       </div>
 
@@ -860,9 +891,10 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
                     onClick={() => onChangeScheduleType(type)}
                     className={
                       scheduleType === type
-                        ? "rounded-lg border border-[#485763] bg-[#485763] px-3 py-1.5 text-xs font-medium text-white"
+                        ? "rounded-lg px-3 py-1.5 text-xs font-medium text-white"
                         : "rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
                     }
+                    style={scheduleType === type ? { backgroundColor: selectedTheme.accentColor } : undefined}
                   >
                     {SCHEDULE_TYPE_LABEL[type]}
                   </button>
@@ -872,7 +904,8 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
             <button
               type="button"
               onClick={onAddScheduleItem}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[#485763] text-lg leading-none text-white transition hover:bg-[#3f4c56]"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-lg leading-none text-white transition hover:opacity-95"
+              style={{ backgroundColor: selectedTheme.accentColor }}
               aria-label="섹션 추가"
             >
               <span className="-translate-y-[1px]">+</span>

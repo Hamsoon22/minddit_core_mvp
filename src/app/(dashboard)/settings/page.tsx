@@ -226,29 +226,29 @@ export default function SettingsPage() {
 
   function tabClass(tab: SettingsTab) {
     return activeTab === tab
-      ? "w-full rounded-lg bg-gray-100 px-4 py-3 text-left text-sm font-medium text-gray-900"
-      : "w-full rounded-lg px-4 py-3 text-left text-sm text-gray-500 hover:bg-gray-50";
+      ? "w-full rounded-lg bg-[#485763] px-4 py-3 text-left text-sm font-semibold text-white"
+      : "w-full rounded-lg px-4 py-3 text-left text-sm text-gray-500 transition hover:bg-gray-100 hover:text-gray-800";
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">설정</h1>
-          <p className="mt-2 text-sm text-gray-500">시스템 및 계정 설정을 관리합니다.</p>
-        </div>
+    <div>
+      <div className="dashboard-sticky-header-compact flex items-center justify-between gap-4">
+        <h1 className="text-[1.7rem] font-bold text-gray-900">설정</h1>
 
         <button
           onClick={onSave}
           disabled={saving}
-          className="inline-flex h-10 items-center justify-center rounded-lg bg-[#485763] px-4 text-sm font-medium text-white transition hover:bg-[#3f4c56] disabled:opacity-60"
+          className="inline-flex h-10 w-[76px] items-center justify-center rounded-lg bg-[#292929] px-4 text-sm font-medium text-white transition hover:bg-[#1f1f1f] disabled:opacity-60"
         >
           {saving ? "저장 중..." : "저장"}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[240px_1fr]">
-        <aside className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="mt-0.5 space-y-6">
+        <p className="text-sm text-gray-500">시스템 및 계정 설정을 관리합니다.</p>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[240px_1fr]">
+        <aside>
           <nav className="space-y-1">
             <button onClick={() => setActiveTab("general")} className={tabClass("general")}>기관 설정</button>
             <button onClick={() => setActiveTab("account")} className={tabClass("account")}>계정 설정</button>
@@ -503,7 +503,7 @@ export default function SettingsPage() {
           {activeTab === "users" && (
             <section className="rounded-xl border border-gray-200 bg-white p-6">
               <h2 className="text-lg font-semibold text-gray-900">사용자 관리</h2>
-              <p className="mt-2 text-sm text-gray-500">사용자 관리 항목은 준비 중입니다.</p>
+              <p className="mt-2 text-sm text-gray-500">사용자 관리 항목은 준비 중입니다···</p>
             </section>
           )}
 
@@ -533,32 +533,11 @@ export default function SettingsPage() {
                     <span className="relative h-6 w-11 rounded-full bg-gray-300 transition peer-checked:bg-[#485763] after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition peer-checked:after:translate-x-5" />
                   </label>
                 </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-gray-800">자동 백업</p>
-                    <p className="text-sm text-gray-500">매일 자정 데이터 백업</p>
-                  </div>
-
-                  <label className="inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      checked={form.enableAutoBackup}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          enableAutoBackup: e.target.checked,
-                        }))
-                      }
-                      className="peer sr-only"
-                    />
-                    <span className="relative h-6 w-11 rounded-full bg-gray-300 transition peer-checked:bg-[#485763] after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition peer-checked:after:translate-x-5" />
-                  </label>
-                </div>
               </div>
             </section>
           )}
         </div>
+      </div>
       </div>
 
     </div>

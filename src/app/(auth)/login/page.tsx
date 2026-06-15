@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -30,13 +31,8 @@ export default function LoginPage() {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-8">
       <div className="mb-8">
-        <div className="inline-flex items-center gap-2 mb-6">
-          <div className="w-7 h-7 rounded-lg bg-brand-700 flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9 4a1 1 0 012 0v.18A7.002 7.002 0 0116 11v5a1 1 0 01-1 1H5a1 1 0 01-1-1v-5a7.002 7.002 0 015-6.82V4z"/>
-            </svg>
-          </div>
-          <span className="font-semibold text-gray-900">Mindflow</span>
+        <div className="inline-flex items-center mb-6">
+          <Image src="/logo.svg" alt="Minddit Core" width={132} height={26} className="h-6 w-auto" priority />
         </div>
         <h1 className="text-2xl font-semibold text-gray-900">로그인</h1>
         <p className="text-gray-500 mt-1 text-sm">전문가 계정으로 시작하세요</p>
@@ -50,7 +46,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#485763] focus:border-transparent"
             placeholder="name@example.com"
           />
         </div>
@@ -61,7 +57,7 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#485763] focus:border-transparent"
             placeholder="••••••••"
           />
         </div>
@@ -69,7 +65,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2.5 bg-brand-700 text-white rounded-lg text-sm font-medium hover:bg-brand-600 transition disabled:opacity-50"
+          className="w-full py-2.5 bg-[#485763] text-white rounded-lg text-sm font-medium hover:bg-[#3f4c56] transition disabled:opacity-50"
         >
           {loading ? "로그인 중..." : "로그인"}
         </button>
@@ -77,7 +73,7 @@ export default function LoginPage() {
 
       <p className="text-center text-sm text-gray-500 mt-6">
         계정이 없으신가요?{" "}
-        <a href="/signup" className="text-brand-700 font-medium hover:underline">회원가입</a>
+        <a href="/signup" className="text-[#485763] font-medium hover:underline">회원가입</a>
       </p>
     </div>
   );

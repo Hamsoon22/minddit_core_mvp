@@ -142,7 +142,7 @@ function RadioCol({
       {labels.map((lbl, i) => (
         <label
           key={i}
-          className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 px-3.5 py-2.5 text-xs text-gray-600 transition hover:border-gray-400 hover:bg-gray-50 has-[:checked]:border-gray-900 has-[:checked]:bg-gray-900 has-[:checked]:text-white"
+          className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 px-3.5 py-2.5 text-xs text-gray-600 transition hover:border-gray-400 hover:bg-gray-50 has-[:checked]:border-[#292929] has-[:checked]:bg-[#292929] has-[:checked]:text-white"
         >
           <input
             type="radio"
@@ -249,7 +249,7 @@ export default function BurnoutPage() {
         {!submitted ? (
           <>
             {/* Header block */}
-            <div className="mb-6 rounded-xl bg-gray-900 px-6 py-5 text-white">
+            <div className="mb-6 rounded-lg -translate-y-[2px] bg-[#ffffff] px-6 py-5 text-[#292929]">
               {/* Lang selector */}
               <div className="mb-4 flex gap-2">
                 {langBtns.map(({ code, label }) => (
@@ -259,8 +259,8 @@ export default function BurnoutPage() {
                     onClick={() => switchLang(code)}
                     className={`rounded-full border px-3 py-1 text-xs transition ${
                       lang === code
-                        ? "border-white bg-white text-gray-900"
-                        : "border-white/30 text-white/70 hover:border-white/60 hover:text-white"
+                        ? "border-[#292929] bg-[#292929] text-white"
+                        : "border-gray-300 text-gray-600 hover:border-gray-500 hover:text-gray-800"
                     }`}
                   >
                     {label}
@@ -268,8 +268,8 @@ export default function BurnoutPage() {
                 ))}
               </div>
               <h1 className="mb-1 text-xl font-bold">{t.heroTitle}</h1>
-              <p className="text-sm leading-relaxed text-white/70">{t.heroDesc}</p>
-              <p className="mt-1.5 text-xs text-white/50">
+              <p className="text-sm leading-relaxed text-[#4B4B4B]">{t.heroDesc}</p>
+              <p className="mt-1.5 text-xs text-gray-500">
                 0 — {t.labels[0]} &nbsp;·&nbsp; 6 — {t.labels[6]}
               </p>
             </div>
@@ -302,7 +302,7 @@ export default function BurnoutPage() {
         ) : (
           <>
             {/* Result header */}
-            <div className="mb-6 rounded-xl bg-gray-900 px-6 py-5 text-white">
+            <div className="mb-6 rounded-lg -translate-y-[2px] bg-[#ffffff] px-6 py-5 text-[#292929]">
               <div className="mb-3 flex gap-2">
                 {langBtns.map(({ code, label }) => (
                   <button
@@ -311,8 +311,8 @@ export default function BurnoutPage() {
                     onClick={() => switchLang(code)}
                     className={`rounded-full border px-3 py-1 text-xs transition ${
                       lang === code
-                        ? "border-white bg-white text-gray-900"
-                        : "border-white/30 text-white/70 hover:border-white/60 hover:text-white"
+                        ? "border-[#292929] bg-[#292929] text-white"
+                        : "border-gray-300 text-gray-600 hover:border-gray-500 hover:text-gray-800"
                     }`}
                   >
                     {label}
@@ -320,7 +320,7 @@ export default function BurnoutPage() {
                 ))}
               </div>
               <h1 className="mb-1 text-xl font-bold">{t.title} 결과</h1>
-              <p className="text-sm text-white/70">T점수 기준 (평균=50, SD=10)</p>
+              <p className="text-sm text-[#4B4B4B]">T점수 기준 (평균=50, SD=10)</p>
             </div>
 
             <div className="flex flex-col gap-3">
@@ -367,6 +367,21 @@ export default function BurnoutPage() {
           </>
         )}
       </div>
+
+      {!isEmbedded && (
+        <div className="pointer-events-none fixed bottom-[40px] left-1/2 z-[315] w-full max-w-[430px] -translate-x-1/2 px-[25px]">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#292929] text-white shadow-lg transition hover:opacity-90"
+              aria-label="맨 위로 이동"
+            >
+              ↑
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

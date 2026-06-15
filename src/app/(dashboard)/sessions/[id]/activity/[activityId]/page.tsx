@@ -69,7 +69,7 @@ export default function SessionActivityMobileViewPage({
     <div className="min-h-screen bg-[#f3f5f7] pb-16">
       <div className="mx-auto w-full max-w-[430px]">
         <div className="rounded-b-[28px] bg-[#d7e5f1] px-4 pb-6 pt-8">
-          <h1 className="text-2xl font-extrabold leading-tight text-[#101828]">{session.title}</h1>
+          <h1 className="text-[1.7rem] font-extrabold leading-tight text-[#101828]">{session.title}</h1>
           <p className="mt-1 whitespace-pre-line text-sm text-[#4b5563]">{description}</p>
 
           <div className="mt-5 flex items-center gap-3 rounded-full bg-white px-4 py-2.5 text-[#1f2937]">

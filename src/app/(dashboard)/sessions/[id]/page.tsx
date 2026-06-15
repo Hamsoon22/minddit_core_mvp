@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { getProgramSessionById, updateProgramSession, type ProgramSession } from "@/lib/programSessions";
+import { getProgramTheme } from "@/lib/programTheme";
 import type { SessionActivity } from "@/types/activity";
 import { getActivityTypeMeta, syncSessionActivityFromCatalog } from "@/lib/contentCatalog";
 import {
@@ -26,9 +27,17 @@ const statusLabel: Record<string, string> = {
 
 const statusColor: Record<string, string> = {
   DRAFT: "border border-gray-300 bg-transparent text-gray-600",
-  SCHEDULED: "bg-blue-50 text-blue-700",
-  ACTIVE: "bg-green-50 text-green-700",
+  SCHEDULED: "bg-[#DDEFF9] text-[#0688D3]",
+  ACTIVE: "bg-[#E6ECE0] text-[#68814E]",
   COMPLETED: "bg-gray-200 text-gray-700",
+};
+
+const LINK_BORDER_BY_THEME: Record<string, string> = {
+  slate: "#0688D3",
+  rose: "#AD4E70",
+  forest: "#68814E",
+  teal: "#417572",
+  olive: "#8C8A47",
 };
 
 function formatDate(date?: Date | null) {
@@ -70,6 +79,23 @@ function escapeCsvCell(value: string) {
   return `"${value.replace(/"/g, '""')}"`;
 }
 
+function withAlpha(hexColor: string, alpha: number) {
+  const normalized = hexColor.replace("#", "");
+  const hex = normalized.length === 3
+    ? normalized
+        .split("")
+        .map((char) => char + char)
+        .join("")
+    : normalized;
+
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return hexColor;
+
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function parseSectionStartDate(
   section: ProgramSession["scheduleItems"][number] | { id: string; label: string },
   scheduleType?: ProgramSession["scheduleType"]
@@ -100,6 +126,8 @@ export default function SessionDetailViewPage({ params }: { params: { id: string
   const [isEditingMessage, setIsEditingMessage] = useState(false);
   const [participantModalOpen, setParticipantModalOpen] = useState(false);
   const [participantAccounts, setParticipantAccounts] = useState<ProgramParticipantAccount[]>([]);
+  const theme = useMemo(() => getProgramTheme(session?.themeKey), [session?.themeKey]);
+  const linkBorderColor = LINK_BORDER_BY_THEME[theme.key] ?? theme.accentColor;
 
   useEffect(() => {
     const found = getProgramSessionById(params.id);
@@ -291,6 +319,14 @@ ${link}
 
   async function onCopyProgramLink() {
     if (!session) return;
+    if (!(session.linkSharingEnabled ?? true)) {
+      window.dispatchEvent(
+        new CustomEvent("minddit:toast", {
+          detail: { message: "활성화된 링크가 없습니다.", tone: "error" },
+        })
+      );
+      return;
+    }
     const link = `${window.location.origin}/s/${session.joinCode}`;
     try {
       await navigator.clipboard.writeText(link);
@@ -309,10 +345,37 @@ ${link}
     }
   }
 
-  function onOpenActivity(activity: SessionActivity) {
+  function toggleLinkSharing() {
     if (!session) return;
-    const mobileLink = `${window.location.origin}/s/${session.joinCode}/activity/${activity.id}`;
-    window.open(mobileLink, "_blank", "noopener,noreferrer");
+    const nextEnabled = !(session.linkSharingEnabled ?? true);
+    const patched = updateProgramSession(session.id, { linkSharingEnabled: nextEnabled });
+    if (!patched) return;
+
+    setSession(patched);
+    window.dispatchEvent(
+      new CustomEvent("minddit:toast", {
+        detail: {
+          message: nextEnabled ? "프로그램 링크가 활성화되었습니다." : "프로그램 링크가 비활성화되었습니다.",
+          tone: "success",
+        },
+      })
+    );
+  }
+
+  function onOpenActivity(activity: SessionActivity) {
+    const syncedActivity = syncSessionActivityFromCatalog(activity);
+    if (syncedActivity.content.startsWith("/library/")) {
+      const slug = syncedActivity.content.replace("/library/", "").split("/")[0];
+      router.push(`/library/preview/${slug}`);
+      return;
+    }
+
+    if (syncedActivity.content.startsWith("/")) {
+      router.push(syncedActivity.content);
+      return;
+    }
+
+    window.location.href = syncedActivity.content;
   }
 
   function onDownloadProgramStatsCsv() {
@@ -484,7 +547,7 @@ ${link}
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="dashboard-sticky-header mb-0 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <button
@@ -499,22 +562,63 @@ ${link}
               type="button"
               onClick={openProgramMessageModal}
               aria-label="프로그램 안내 문자 복사"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 transition hover:bg-gray-100"
+              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 text-xs font-bold text-gray-700 transition hover:bg-gray-100"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.8" />
                 <path d="M4 7L12 13L20 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
+              안내
             </button>
-            <button
-              type="button"
-              onClick={onCopyProgramLink}
-              aria-label="프로그램 링크 복사"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 transition hover:bg-gray-100"
+            <div
+              className={`inline-flex h-8 items-center rounded-md border text-xs font-medium ${
+                session.linkSharingEnabled ?? true
+                  ? ""
+                  : "border-gray-300 bg-gray-100 text-gray-500"
+              }`}
+              style={session.linkSharingEnabled ?? true
+                ? {
+                    borderColor: linkBorderColor,
+                    backgroundColor: withAlpha(theme.panelColor, 0.55),
+                    color: theme.textColor,
+                  }
+                : undefined}
             >
-              <span className="text-[16px] leading-none" aria-hidden="true">🔗</span>
-            </button>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusColor[session.status]}`}>
+              <button
+                type="button"
+                onClick={onCopyProgramLink}
+                aria-label="프로그램 링크 복사"
+                className="inline-flex h-full items-center gap-1.5 px-2.5 font-bold transition hover:opacity-85"
+              >
+                <span className="text-[14px] leading-none" aria-hidden="true">🔗</span>
+                링크
+              </button>
+              <span
+                className={`h-4 w-px ${session.linkSharingEnabled ?? true ? "" : "bg-gray-300"}`}
+                style={session.linkSharingEnabled ?? true ? { backgroundColor: theme.textColor, opacity: 0.28 } : undefined}
+                aria-hidden="true"
+              />
+              <button
+                type="button"
+                onClick={toggleLinkSharing}
+                aria-label={session.linkSharingEnabled ?? true ? "링크 비활성화" : "링크 활성화"}
+                className="inline-flex h-full items-center px-2.5 transition hover:opacity-85"
+              >
+                {session.linkSharingEnabled ?? true ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M2 12C3.8 7.8 7.5 5 12 5C16.5 5 20.2 7.8 22 12C20.2 16.2 16.5 19 12 19C7.5 19 3.8 16.2 2 12Z" stroke="currentColor" strokeWidth="1.8" />
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M2 12C3.8 7.8 7.5 5 12 5C16.5 5 20.2 7.8 22 12C20.2 16.2 16.5 19 12 19C7.5 19 3.8 16.2 2 12Z" stroke="currentColor" strokeWidth="1.8" />
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+                    <path d="M4 20L20 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusColor[session.status]}`}>
               {statusLabel[session.status]}
             </span>
           </div>
@@ -524,19 +628,19 @@ ${link}
           <button
             type="button"
             onClick={openParticipantModal}
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-[#292929] bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
           >
             참여자 편집
           </button>
           <Link
             href={`/sessions/${session.id}/setup`}
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#485763] px-4 text-sm font-medium text-white transition hover:bg-[#3f4c56]"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#292929] px-4 text-sm font-medium text-white transition hover:bg-[#1f1f1f]"
           >
             프로그램 편집
           </Link>
           <Link
             href={`/sessions/${session.id}/builder`}
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#485763] px-4 text-sm font-medium text-white transition hover:bg-[#3f4c56]"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#292929] px-4 text-sm font-medium text-white transition hover:bg-[#1f1f1f]"
           >
             활동 편집
           </Link>
@@ -544,17 +648,17 @@ ${link}
       </div>
 
       <div className="space-y-4">
-        <div className="rounded-lg border border-[#292929] bg-[#292929] px-4 py-3 text-sm text-white">
+        <div className="rounded-lg px-4 py-3 text-sm" style={{ backgroundColor: theme.panelColor, color: theme.textColor }}>
           <div className="flex items-center justify-between gap-3">
             <p><span className="font-bold">프로그램 기간</span> {formatDate(session.startDate)} ~ {formatDate(session.endDate)}</p>
             <div className="flex items-center gap-2">
-              <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-xs font-medium text-white">
+              <span className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ backgroundColor: theme.panelSoftColor, color: theme.textColor }}>
                 참여자 {session._count.participants}명
               </span>
-              <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-xs font-medium text-white">
+              <span className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ backgroundColor: theme.panelSoftColor, color: theme.textColor }}>
                 {getModeLabel(session.mode)}
               </span>
-              <span className="rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-xs font-medium text-white">
+              <span className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ backgroundColor: theme.panelSoftColor, color: theme.textColor }}>
                 {(session.expertName ?? "서윤희")} 전문가
               </span>
             </div>
@@ -592,8 +696,8 @@ ${link}
             return (
               <div key={section.id} className="relative pl-8">
                 <span className="absolute left-3 top-6 h-4 w-4 -translate-x-1/2 -translate-y-1/2" aria-hidden>
-                  {isBlinking && <span className="absolute inset-0 animate-ping rounded-full bg-[#485763]/40" />}
-                  <span className="absolute inset-0 rounded-full border-2 border-white bg-[#485763] shadow-sm" />
+                  {isBlinking && <span className="absolute inset-0 animate-ping rounded-full bg-[#292929]/35" />}
+                  <span className="absolute inset-0 rounded-full border-2 border-white bg-[#292929] shadow-sm" />
                 </span>
 
                 <div className="w-full rounded-xl border border-gray-200 bg-white p-4">

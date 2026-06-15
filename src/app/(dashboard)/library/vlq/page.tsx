@@ -163,7 +163,7 @@ function ScoreRow({
             onClick={() => onChange(score)}
             className={`flex h-8 w-full min-w-0 items-center justify-center rounded-full border text-[11px] transition ${
               value === score
-                ? "border-gray-900 bg-gray-900 font-medium text-white"
+                ? "border-[#292929] bg-[#292929] font-medium text-white"
                 : "border-gray-200 bg-white text-gray-500 hover:border-gray-400 hover:text-gray-900"
             }`}
           >
@@ -324,7 +324,7 @@ export default function VLQPage() {
                   onClick={() => switchLang(l)}
                   className={`rounded-full border px-3 py-1 text-xs transition ${
                     lang === l
-                      ? "border-gray-900 bg-gray-900 text-white"
+                      ? "border-[#292929] bg-[#292929] text-white"
                       : "border-gray-200 bg-white text-gray-500 hover:border-gray-400"
                   }`}
                 >
@@ -337,7 +337,7 @@ export default function VLQPage() {
         ) : (
           <>
             {/* ── Header block ── */}
-            <div className="mb-6 rounded-xl bg-gray-900 px-6 py-5 text-white">
+            <div className="mb-6 rounded-lg -translate-y-[2px] bg-[#ffffff] px-6 py-5 text-[#292929]">
               <div className="mb-4 flex gap-2">
                 {(["ko", "en", "my"] as Lang[]).map((l) => (
                   <button
@@ -346,8 +346,8 @@ export default function VLQPage() {
                     onClick={() => switchLang(l)}
                     className={`rounded-full border px-3 py-1 text-xs transition ${
                       lang === l
-                        ? "border-white bg-white text-gray-900"
-                        : "border-white/30 text-white/70 hover:border-white/60 hover:text-white"
+                        ? "border-[#292929] bg-[#292929] text-white"
+                        : "border-gray-300 text-gray-600 hover:border-gray-500 hover:text-gray-800"
                     }`}
                   >
                     {l === "ko" ? "한국어" : l === "en" ? "English" : "မြန်မာ"}
@@ -355,7 +355,7 @@ export default function VLQPage() {
                 ))}
               </div>
               <h1 className="mb-1 text-xl font-bold">{t.heroTitle}</h1>
-              <p className="text-sm leading-relaxed text-white/70">{t.heroDesc}</p>
+              <p className="text-sm leading-relaxed text-[#4B4B4B]">{t.heroDesc}</p>
             </div>
 
             {/* ── Step label ── */}
@@ -389,7 +389,7 @@ export default function VLQPage() {
                           onClick={() => pickNA(i)}
                           className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] transition ${
                             naSelected
-                              ? "border-gray-900 bg-gray-900 text-white"
+                              ? "border-[#292929] bg-[#292929] text-white"
                               : "border-gray-200 text-gray-400 hover:border-gray-400"
                           }`}
                         >
@@ -427,6 +427,21 @@ export default function VLQPage() {
           </>
         )}
       </div>
+
+      {!isEmbedded && (
+        <div className="pointer-events-none fixed bottom-[40px] left-1/2 z-[315] w-full max-w-[430px] -translate-x-1/2 px-[25px]">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#292929] text-white shadow-lg transition hover:opacity-90"
+              aria-label="맨 위로 이동"
+            >
+              ↑
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

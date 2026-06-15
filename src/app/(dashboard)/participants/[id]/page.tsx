@@ -8,7 +8,9 @@ export default function ParticipantDetailPage({ params }: { params: { id: string
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">{participant.name}</h1>
+      <div className="dashboard-sticky-header mb-6">
+        <h1 className="text-[1.7rem] font-bold text-gray-900">{participant.name}</h1>
+      </div>
       <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-md">
         <dl className="space-y-3 text-sm">
           <div className="flex justify-between">

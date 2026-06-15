@@ -8,10 +8,10 @@ export default function ParticipantsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-4">
+      <div className="dashboard-sticky-header mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">참여자 관리</h1>
-          <p className="mt-2 text-sm text-gray-500">
+          <h1 className="text-[1.7rem] font-bold text-gray-900">참여자 관리</h1>
+          <p className="mt-0.5 text-sm text-gray-500">
             참여자 현황과 참여 상태를 확인하고 관리하세요.
           </p>
         </div>

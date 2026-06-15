@@ -65,7 +65,7 @@ function RadioRow({
       {OPTIONS.map((opt) => (
         <label
           key={opt.value}
-          className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 px-3.5 py-2.5 text-xs text-gray-600 transition hover:border-gray-400 hover:bg-gray-50 has-[:checked]:border-gray-900 has-[:checked]:bg-gray-900 has-[:checked]:text-white"
+          className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 px-3.5 py-2.5 text-xs text-gray-600 transition hover:border-gray-400 hover:bg-gray-50 has-[:checked]:border-[#292929] has-[:checked]:bg-[#292929] has-[:checked]:text-white"
         >
           <input
             type="radio"
@@ -138,11 +138,11 @@ export default function AAQPage() {
         {!submitted ? (
           <>
             {/* Header block */}
-            <div className="mb-6 rounded-xl bg-gray-900 px-6 py-5 text-white">
+            <div className="mb-6 rounded-lg -translate-y-[2px] bg-[#ffffff] px-6 py-5 text-[#292929]">
               <h1 className="mb-1 text-xl font-bold">수용-행동 질문지</h1>
-              <p className="text-sm leading-relaxed text-white/70">
+              <p className="text-sm leading-relaxed text-[#4B4B4B]">
                 다음 문장들을 읽고, 각 진술이 당신에게 얼마나 해당되는지{" "}
-                <span className="font-medium text-white underline underline-offset-2">
+                <span className="font-medium text-[#292929] underline underline-offset-2">
                   가장 잘 나타내는 설명
                 </span>
                 을 골라 주세요. (0~6점)
@@ -180,9 +180,9 @@ export default function AAQPage() {
         ) : (
           <>
             {/* Result header */}
-            <div className="mb-6 rounded-xl bg-gray-900 px-6 py-5 text-white">
+            <div className="mb-6 rounded-lg -translate-y-[2px] bg-[#ffffff] px-6 py-5 text-[#292929]">
               <h1 className="mb-1 text-xl font-bold">수용-행동 질문지 결과</h1>
-              <p className="text-sm text-white/70">
+              <p className="text-sm text-[#4B4B4B]">
                 점수가 높을수록 심리적 비유연성(경험 회피)이 높음을 의미합니다.
               </p>
             </div>
@@ -237,6 +237,21 @@ export default function AAQPage() {
           </>
         )}
       </div>
+
+      {!isEmbedded && (
+        <div className="pointer-events-none fixed bottom-[40px] left-1/2 z-[315] w-full max-w-[430px] -translate-x-1/2 px-[25px]">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#292929] text-white shadow-lg transition hover:opacity-90"
+              aria-label="맨 위로 이동"
+            >
+              ↑
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,9 +1,9 @@
 export default function NewParticipantPage() {
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">새 참여자</h1>
-        <p className="mt-2 text-sm text-gray-500">
+      <div className="dashboard-sticky-header">
+        <h1 className="text-[1.7rem] font-bold text-gray-900">새 참여자</h1>
+        <p className="mt-0.5 text-sm text-gray-500">
           참여자 정보를 입력하는 화면을 준비 중입니다.
         </p>
       </div>

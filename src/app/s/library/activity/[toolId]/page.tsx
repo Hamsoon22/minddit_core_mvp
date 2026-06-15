@@ -1,5 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import { getProgramSessions } from "@/lib/programSessions";
+import { getProgramLinkTheme } from "@/lib/programTheme";
+
 
 type ToolPreview = {
   id: string;
@@ -59,6 +64,14 @@ export default function LibraryActivityPreviewPage({
 }: {
   params: { toolId: string };
 }) {
+  const searchParams = useSearchParams();
+  const code = searchParams.get("code");
+  const theme = useMemo(() => {
+    if (!code) return getProgramLinkTheme();
+    const linkedSession = getProgramSessions().find((item) => item.joinCode === code);
+    return getProgramLinkTheme(linkedSession?.themeKey);
+  }, [code]);
+
   const tool = TOOLS.find((item) => item.id === params.toolId) ?? null;
 
   if (!tool) {
@@ -72,16 +85,16 @@ export default function LibraryActivityPreviewPage({
   return (
     <div className="min-h-screen bg-[#f3f5f7] pb-16">
       <div className="mx-auto w-full max-w-[430px]">
-        <div className="rounded-b-[28px] bg-[#d7e5f1] px-4 pb-6 pt-6">
+        <div className="rounded-b-[28px] px-4 pb-6 pt-6" style={{ backgroundColor: theme.panelColor }}>
           <button
             type="button"
             onClick={() => window.history.back()}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-xl font-semibold leading-none text-gray-900 shadow-sm"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-semibold leading-none text-gray-900 shadow-sm"
           >
             ←
           </button>
-          <h1 className="mt-3 text-2xl font-extrabold leading-tight text-[#101828]">{tool.title}</h1>
-          <p className="mt-1 text-sm leading-6 text-[#4b5563]">{tool.description}</p>
+          <h1 className="mt-3 text-2xl font-extrabold leading-tight" style={{ color: theme.textColor }}>{tool.title}</h1>
+          <p className="mt-1 text-sm leading-6" style={{ color: theme.textColor, opacity: 0.82 }}>{tool.description}</p>
         </div>
 
         <div className="px-2 pt-4">
@@ -89,7 +102,7 @@ export default function LibraryActivityPreviewPage({
             <iframe
               title={`${tool.title} 참여자 화면`}
               src={`${tool.href}?embed=1`}
-              className="h-[800px] w-full"
+              className="h-[812px] w-full"
             />
           </div>
         </div>
@@ -97,6 +110,19 @@ export default function LibraryActivityPreviewPage({
         <footer className="mt-8 px-4 pb-4 text-center text-[11px] text-gray-400">
           Minddit Core · 프로그램 링크 뷰 © 2026
         </footer>
+      </div>
+
+      <div className="pointer-events-none fixed bottom-[40px] left-1/2 z-[315] w-full max-w-[430px] -translate-x-1/2 px-[25px]">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#292929] text-white shadow-lg transition hover:opacity-90"
+            aria-label="맨 위로 이동"
+          >
+            ↑
+          </button>
+        </div>
       </div>
     </div>
   );
