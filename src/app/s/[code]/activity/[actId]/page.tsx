@@ -14,25 +14,6 @@ import {
   setProgramLinkLoggedInUser,
   verifyParticipantLogin,
 } from "@/lib/programParticipantAccounts";
-import { recordProgramActivityTap } from "@/lib/programActivityMetrics";
-
-function withAlpha(hexColor: string, alpha: number) {
-  const normalized = hexColor.replace("#", "");
-  const isShortHex = normalized.length === 3;
-  const hex = isShortHex
-    ? normalized
-        .split("")
-        .map((char) => char + char)
-        .join("")
-    : normalized;
-
-  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return hexColor;
-
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
 
 function formatDate(date?: Date | null) {
   if (!date) return "-";
@@ -216,16 +197,10 @@ export default function ActivityPage({ params }: { params: { code: string; actId
       return;
     }
 
-    recordProgramActivityTap({
-      sessionId: session!.id,
-      activityId: activity.id,
-      participantId: loggedInUser,
-    });
-
     if (activity.content.startsWith("/library/")) {
       if (!session) return;
       const slug = activity.content.replace("/library/", "").split("/")[0];
-      router.push(`/s/library/activity/${slug}?code=${session.joinCode}`);
+      router.push(`/s/library/activity/${slug}?code=${session.joinCode}&activityId=${encodeURIComponent(activity.id)}`);
       return;
     }
 
@@ -246,7 +221,7 @@ export default function ActivityPage({ params }: { params: { code: string; actId
           </div>
         )}
 
-        <div className="rounded-b-[28px] px-4 pb-6 pt-8" style={{ backgroundColor: withAlpha(theme.panelColor, 0.7) }}>
+        <div className="rounded-b-[28px] px-4 pb-6 pt-8" style={{ backgroundColor: theme.panelColor }}>
           <h1 className="text-2xl font-extrabold leading-tight" style={{ color: theme.textColor }}>{session.title}</h1>
           <p className="mt-1 whitespace-pre-line text-sm" style={{ color: theme.textColor, opacity: 0.82 }}>{description}</p>
 

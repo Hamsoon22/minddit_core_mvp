@@ -44,6 +44,8 @@ type StoredProgramSession = Omit<
 };
 
 const STORAGE_KEY = "minddit.programSessions.v3";
+const STORAGE_BACKUP_KEY = "minddit.programSessions.backup.v1";
+const LEGACY_STORAGE_KEYS = ["minddit.programSessions.v2", "minddit.programSessions.v1"];
 
 function toDayStart(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -110,7 +112,7 @@ function withDerivedStatus(session: ProgramSession): ProgramSession {
   return {
     ...session,
     status: derivedStatus,
-    linkSharingEnabled: derivedStatus === "COMPLETED" ? false : (session.linkSharingEnabled ?? true),
+    linkSharingEnabled: session.linkSharingEnabled ?? (derivedStatus === "COMPLETED" ? false : true),
     themeKey: session.themeKey ?? "slate",
   };
 }
@@ -170,35 +172,85 @@ function cloneSeed(): ProgramSession[] {
 
 function persist(sessions: ProgramSession[]) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(sessions.map(toStored))
-  );
+  const serialized = JSON.stringify(sessions.map(toStored));
+  try {
+    window.localStorage.setItem(STORAGE_KEY, serialized);
+  } catch {
+    // Storage write can fail in restrictive browser modes; keep in-memory flow alive.
+  }
+
+  // Keep a last-known-good snapshot so transient corruption does not wipe data.
+  if (sessions.length > 0) {
+    try {
+      window.localStorage.setItem(STORAGE_BACKUP_KEY, serialized);
+    } catch {
+      // Ignore backup write failures for the same reason as above.
+    }
+  }
+}
+
+function tryParseStoredSessions(raw: string | null): ProgramSession[] | null {
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+
+    const restored = (parsed as StoredProgramSession[]).map(fromStored).map(withDerivedStatus);
+    if (restored.length === 0) return null;
+    return restored;
+  } catch {
+    return null;
+  }
+}
+
+function recoverFromBackup(): ProgramSession[] | null {
+  if (typeof window === "undefined") return null;
+
+  const backup = tryParseStoredSessions(window.localStorage.getItem(STORAGE_BACKUP_KEY));
+  if (!backup) return null;
+  persist(backup);
+  return backup;
 }
 
 export function getProgramSessions(): ProgramSession[] {
   if (typeof window === "undefined") return cloneSeed();
 
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    const seed = cloneSeed();
-    persist(seed);
-    return seed.map(withDerivedStatus);
+  let rawCurrent: string | null = null;
+  try {
+    rawCurrent = window.localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return cloneSeed().map(withDerivedStatus);
   }
 
-  try {
-    const parsed = JSON.parse(raw) as StoredProgramSession[];
-    return parsed.map(fromStored).map(withDerivedStatus);
-  } catch {
-    const seed = cloneSeed();
-    persist(seed);
-    return seed.map(withDerivedStatus);
+  const current = tryParseStoredSessions(rawCurrent);
+  if (current) return current;
+
+  const backup = recoverFromBackup();
+  if (backup) return backup;
+
+  for (const legacyKey of LEGACY_STORAGE_KEYS) {
+    const legacy = tryParseStoredSessions(window.localStorage.getItem(legacyKey));
+    if (legacy) {
+      persist(legacy);
+      return legacy;
+    }
   }
+
+  const seed = cloneSeed();
+  persist(seed);
+  return seed.map(withDerivedStatus);
 }
 
 export function getProgramSessionById(id: string): ProgramSession | null {
   const sessions = getProgramSessions();
   return sessions.find((s) => s.id === id) ?? null;
+}
+
+export function resetProgramSessionsToSeed(): ProgramSession[] {
+  const seed = cloneSeed().map(withDerivedStatus);
+  persist(seed);
+  return seed;
 }
 
 export function createProgramSession(input: {

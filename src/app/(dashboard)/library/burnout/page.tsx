@@ -214,6 +214,17 @@ export default function BurnoutPage() {
     setSubmitted(false);
   }
 
+  function notifyCtaEngaged() {
+    if (typeof window === "undefined") return;
+    if (window.parent === window) return;
+    window.parent.postMessage({ type: "minddit-activity-cta", action: "result" }, "*");
+  }
+
+  function onSubmitResult() {
+    notifyCtaEngaged();
+    setSubmitted(true);
+  }
+
   const exMean = mean(EXHAUSTION_IDX, responses);
   const dpMean = mean(DEPERSONAL_IDX, responses);
   const efMean = mean(EFFICACY_IDX,   responses);
@@ -290,7 +301,7 @@ export default function BurnoutPage() {
             <button
               type="button"
               disabled={!allAnswered}
-              onClick={() => setSubmitted(true)}
+              onClick={onSubmitResult}
               className="mt-6 w-full rounded-xl bg-gray-900 py-3.5 text-sm font-medium text-white transition hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-30"
             >
               {t.submit}

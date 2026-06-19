@@ -4,12 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SchedulePanel from "@/components/dashboard/SchedulePanel";
-import { getProgramDateSummary, getProgramSessions, type ProgramSession } from "@/lib/programSessions";
+import {
+  getProgramDateSummary,
+  getProgramSessions,
+  resetProgramSessionsToSeed,
+  type ProgramSession,
+} from "@/lib/programSessions";
 
 const statusLabel: Record<string, string> = {
   DRAFT: "임시 저장",
   SCHEDULED: "예정",
-  ACTIVE: "진행중",
+  ACTIVE: "진행",
   COMPLETED: "완료",
 };
 
@@ -17,7 +22,7 @@ const statusColor: Record<string, string> = {
   DRAFT: "border border-gray-300 bg-transparent text-gray-600",
   SCHEDULED: "bg-[#DDEFF9] text-[#0688D3]",
   ACTIVE: "bg-[#E6ECE0] text-[#68814E]",
-  COMPLETED: "bg-gray-50 text-gray-500",
+  COMPLETED: "bg-gray-200 text-gray-700",
 };
 
 function getComparableDate(session: ProgramSession) {
@@ -58,7 +63,16 @@ export default function ProgramOverviewSection() {
   const [sessions, setSessions] = useState<ProgramSession[]>([]);
 
   useEffect(() => {
-    setSessions(getProgramSessions());
+    try {
+      const loaded = getProgramSessions();
+      if (loaded.length > 0) {
+        setSessions(loaded);
+        return;
+      }
+      setSessions(resetProgramSessionsToSeed());
+    } catch {
+      setSessions(resetProgramSessionsToSeed());
+    }
   }, []);
 
   const totalSessions = sessions.length;
@@ -66,8 +80,8 @@ export default function ProgramOverviewSection() {
     () => sessions.reduce((sum, session) => sum + session._count.participants, 0),
     [sessions]
   );
-  const scheduledSessions = useMemo(
-    () => sessions.filter((session) => session.status === "SCHEDULED"),
+  const activeSessions = useMemo(
+    () => sessions.filter((session) => session.status === "ACTIVE"),
     [sessions]
   );
   const sortedSessions = useMemo(
@@ -80,10 +94,16 @@ export default function ProgramOverviewSection() {
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_420px]">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <SummaryCard title="전체 프로그램" value={totalSessions} href="/sessions" variant="filled" />
-          <SummaryCard title="전체 참여자" value={totalParticipants} href="/participants" variant="filled" />
+          <SummaryCard title="전체 참여자" value={totalParticipants} href="/participants" variant="filled" disabled />
         </div>
         <div>
-          <SummaryCard title="프로그램 진행(예정)" value={scheduledSessions.length} href="/sessions" />
+          <SummaryCard
+            title="진행중 프로그램"
+            value={activeSessions.length}
+            href="/sessions"
+            cardClassName="bg-[#DAE3E9] border-[#c6d2da] hover:opacity-85"
+            cardStyle={{ backgroundColor: "#DAE3E9", borderColor: "#c6d2da" }}
+          />
         </div>
       </section>
 
@@ -125,7 +145,7 @@ export default function ProgramOverviewSection() {
                     tabIndex={0}
                   >
                     <td className="px-4 py-4 align-middle">
-                      <Link href={`/sessions/${session.id}`} className="font-medium text-gray-800 hover:text-gray-600">
+                      <Link href={`/sessions/${session.id}`} className="font-semibold text-gray-800 hover:text-gray-600">
                         {session.title}
                       </Link>
                     </td>
@@ -154,21 +174,44 @@ function SummaryCard({
   value,
   href,
   variant = "default",
+  cardClassName,
+  cardStyle,
+  disabled,
 }: {
   title: string;
   value: number;
   href: string;
   variant?: "default" | "filled";
+  cardClassName?: string;
+  cardStyle?: React.CSSProperties;
+  disabled?: boolean;
 }) {
   const filled = variant === "filled";
+  const baseClass = filled
+    ? "block h-full w-full rounded-xl border border-[#292929] bg-gradient-to-b from-[#485763] to-[#292929] p-5 transition-opacity hover:opacity-85"
+    : `block h-full w-full rounded-xl border border-gray-200 bg-white p-5 transition hover:border-gray-300 hover:shadow-sm ${cardClassName ?? ""}`;
+
+  if (disabled) {
+    return (
+      <div className={`${baseClass} cursor-not-allowed`} style={cardStyle} role="note" aria-label={`${title} 이동 비활성화`}>
+        <div className="flex items-center justify-between gap-3">
+          <p className={filled ? "text-sm text-white" : "text-sm text-gray-500"}>{title}</p>
+          <span className={filled ? "text-white" : "text-gray-400"} aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 6L15 12L9 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        </div>
+        <p className={filled ? "mt-3 text-3xl font-extrabold text-white" : "mt-3 text-3xl font-extrabold text-gray-900"}>{value}</p>
+      </div>
+    );
+  }
 
   return (
     <Link
       href={href}
-      className={filled
-        ? "block h-full w-full rounded-xl border border-[#292929] bg-gradient-to-b from-[#485763] to-[#292929] p-5 transition-opacity hover:opacity-85"
-        : "block h-full w-full rounded-xl border border-gray-200 bg-white p-5 transition hover:border-gray-300 hover:shadow-sm"
-      }
+      className={baseClass}
+      style={cardStyle}
     >
       <div className="flex items-center justify-between gap-3">
         <p className={filled ? "text-sm text-white" : "text-sm text-gray-500"}>{title}</p>
@@ -184,7 +227,7 @@ function SummaryCard({
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const label = statusLabel[status] ?? "진행중";
+  const label = statusLabel[status] ?? "진행";
   const colorClass = statusColor[status] ?? "bg-gray-100 text-gray-600";
 
   return (

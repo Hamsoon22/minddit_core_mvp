@@ -107,6 +107,17 @@ export default function AAQPage() {
     setSubmitted(false);
   }
 
+  function notifyCtaEngaged() {
+    if (typeof window === "undefined") return;
+    if (window.parent === window) return;
+    window.parent.postMessage({ type: "minddit-activity-cta", action: "result" }, "*");
+  }
+
+  function onSubmitResult() {
+    notifyCtaEngaged();
+    setSubmitted(true);
+  }
+
   const allAnswered = responses.every((v) => v !== null);
   const totalScore  = responses.reduce<number>((sum, v) => sum + (v ?? 0), 0);
   const tScore      = calcT(totalScore);
@@ -166,7 +177,7 @@ export default function AAQPage() {
             <button
               type="button"
               disabled={!allAnswered}
-              onClick={() => setSubmitted(true)}
+              onClick={onSubmitResult}
               className="mt-6 w-full rounded-xl bg-gray-900 py-3.5 text-sm font-medium text-white transition hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-30"
             >
               결과 보기

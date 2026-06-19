@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
@@ -190,7 +191,7 @@ function ToolCard({ tool }: { tool: ContentTool }) {
         )}
       </div>
 
-      <h3 className="mb-1.5 text-sm font-semibold text-gray-900">{tool.title}</h3>
+      <h3 className="mb-1.5 text-[17px] font-semibold text-gray-900">{tool.title}</h3>
       <p className="mb-4 flex-1 text-xs leading-relaxed text-gray-500">{tool.description}</p>
 
       <div className="mb-4 border-t border-gray-200 pt-3" style={{ minHeight: 36 }}>
@@ -211,7 +212,7 @@ function ToolCard({ tool }: { tool: ContentTool }) {
           ))}
         </div>
         {available ? (
-          <span className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition group-hover:border-gray-900 group-hover:bg-gray-900 group-hover:text-white">
+          <span className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition group-hover:border-[#485763] group-hover:bg-[#485763] group-hover:text-white">
             열기
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M9 6L15 12L9 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -275,30 +276,46 @@ export default function ContentToolsSection() {
     <div>
       {/* Header */}
       <div className="dashboard-sticky-header-compact mb-0 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="flex items-center gap-3">
+          <Image
+            src="/icon_contents.png"
+            alt=""
+            width={48}
+            height={48}
+            className="h-12 w-12 shrink-0 object-contain"
+            aria-hidden="true"
+          />
           <h1 className="text-[1.7rem] font-bold text-gray-900">콘텐츠 관리</h1>
         </div>
 
         {/* Search */}
-        <div className="relative w-full sm:w-52">
-          <svg
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
-            width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div className="relative w-full sm:w-64">
+            <img
+              src="/icon_search.svg"
+              alt=""
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 h-[20px] w-[20px] -translate-y-1/2"
+            />
+            <input
+              type="search"
+              value={toolSearch}
+              onChange={(e) => setToolSearch(e.target.value)}
+              placeholder="검색어를 입력하세요"
+              className="h-11 w-full rounded-lg border border-gray-200 bg-white py-2 pl-8 pr-3 text-xs text-gray-700 placeholder-gray-500 outline-none transition focus:border-gray-300"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => window.open("mailto:contact@minddit.com", "_self")}
+            className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-[#292929] px-4 text-sm font-medium text-white transition hover:bg-[#1f1f1f]"
           >
-            <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-            <path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          <input
-            type="search"
-            value={toolSearch}
-            onChange={(e) => setToolSearch(e.target.value)}
-            placeholder="검색어를 입력하세요"
-            className="w-full rounded-lg border border-[#292929] bg-white py-2 pl-8 pr-3 text-xs text-gray-700 placeholder-gray-500 outline-none transition focus:border-[#292929]"
-          />
+            문의하기
+          </button>
         </div>
       </div>
 
-      <p className="mb-6 mt-0.5 text-sm text-gray-500">정신건강 프로그램에 사용할 활동을 관리하세요.</p>
+      <p className="mb-6 mt-0.5 text-sm text-gray-500">정신건강 프로그램에 활용할 콘텐츠를 확인하세요.</p>
 
       {/* Category tabs */}
       <div className="mb-4 flex flex-wrap gap-2">

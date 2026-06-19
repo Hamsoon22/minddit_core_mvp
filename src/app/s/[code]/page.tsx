@@ -77,14 +77,14 @@ export default function ParticipantLandingPage({ params }: { params: { code: str
     <div className="min-h-screen bg-[#f4f6f7]">
       <main className="flex min-h-screen flex-col items-center justify-center px-4 pb-20 pt-6">
         <div className="w-full max-w-[420px]">
-          <div className="rounded-[28px] border border-[#d4dbe0] p-6 text-center shadow-sm" style={{ backgroundColor: withAlpha(theme.panelColor, 0.5) }}>
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/80">
+          <div className="rounded-[28px] border border-[#d4dbe0] p-6 text-center shadow-sm" style={{ backgroundColor: theme.panelColor }}>
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white">
               <svg className="h-7 w-7" style={{ color: theme.accentColor }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </div>
             <h1 className="mb-1 text-xl font-bold leading-snug" style={{ color: theme.textColor }}>{session.title}</h1>
-            <p className="mb-2 whitespace-pre-line text-sm" style={{ color: theme.textColor, opacity: 0.86 }}>{description}</p>
+            <p className="mb-2 whitespace-pre-line text-sm" style={{ color: theme.textColor }}>{description}</p>
             <div className="mb-6" />
 
             <Link

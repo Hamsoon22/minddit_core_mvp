@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { getProgramSessions } from "@/lib/programSessions";
 import { getProgramLinkTheme } from "@/lib/programTheme";
+import { getProgramLinkLoggedInUser } from "@/lib/programParticipantAccounts";
+import { recordProgramActivityTap } from "@/lib/programActivityMetrics";
 
 
 type ToolPreview = {
@@ -64,13 +66,36 @@ export default function LibraryActivityPreviewPage({
 }: {
   params: { toolId: string };
 }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const searchParams = useSearchParams();
   const code = searchParams.get("code");
-  const theme = useMemo(() => {
-    if (!code) return getProgramLinkTheme();
-    const linkedSession = getProgramSessions().find((item) => item.joinCode === code);
-    return getProgramLinkTheme(linkedSession?.themeKey);
+  const activityId = searchParams.get("activityId");
+
+  const linkedSession = useMemo(() => {
+    if (!code) return null;
+    return getProgramSessions().find((item) => item.joinCode === code) ?? null;
   }, [code]);
+
+  const theme = useMemo(() => getProgramLinkTheme(linkedSession?.themeKey), [linkedSession?.themeKey]);
+
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (!event.data || event.data.type !== "minddit-activity-cta") return;
+      if (!linkedSession || !code) return;
+
+      const loggedInUser = getProgramLinkLoggedInUser(code);
+      if (!loggedInUser) return;
+
+      recordProgramActivityTap({
+        sessionId: linkedSession.id,
+        activityId: activityId || params.toolId,
+        participantId: loggedInUser,
+      });
+    }
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [activityId, code, linkedSession, params.toolId]);
 
   const tool = TOOLS.find((item) => item.id === params.toolId) ?? null;
 
@@ -100,6 +125,7 @@ export default function LibraryActivityPreviewPage({
         <div className="px-2 pt-4">
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
             <iframe
+              ref={iframeRef}
               title={`${tool.title} 참여자 화면`}
               src={`${tool.href}?embed=1`}
               className="h-[812px] w-full"
@@ -112,12 +138,23 @@ export default function LibraryActivityPreviewPage({
         </footer>
       </div>
 
-      <div className="pointer-events-none fixed bottom-[40px] left-1/2 z-[315] w-full max-w-[430px] -translate-x-1/2 px-[25px]">
+      <div className="fixed bottom-[40px] left-1/2 z-[315] w-full max-w-[430px] -translate-x-1/2 px-[25px]">
         <div className="flex justify-end">
           <button
             type="button"
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#292929] text-white shadow-lg transition hover:opacity-90"
+            onClick={() => {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+              document.documentElement.scrollTo({ top: 0, behavior: "smooth" });
+              document.body.scrollTo({ top: 0, behavior: "smooth" });
+
+              const frameWin = iframeRef.current?.contentWindow;
+              if (frameWin) {
+                frameWin.scrollTo({ top: 0, behavior: "smooth" });
+                frameWin.document?.documentElement?.scrollTo({ top: 0, behavior: "smooth" });
+                frameWin.document?.body?.scrollTo({ top: 0, behavior: "smooth" });
+              }
+            }}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#292929] text-white shadow-lg transition hover:opacity-90"
             aria-label="맨 위로 이동"
           >
             ↑

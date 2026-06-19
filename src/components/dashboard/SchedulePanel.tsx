@@ -75,16 +75,18 @@ export default function SchedulePanel({
 }: {
   sessions: ProgramSession[];
 }) {
+  const [windowStartDate, setWindowStartDate] = useState<Date>(() => toDayStart(new Date()));
+  const [selectedOffset, setSelectedOffset] = useState(0);
+
   const scheduleEntries = useMemo(
     () => sessions.flatMap((session) => buildScheduleEntries(session)),
     [sessions]
   );
 
   const days = useMemo(() => {
-    const today = toDayStart(new Date());
     return Array.from({ length: 7 }).map((_, index) => {
-      const date = new Date(today);
-      date.setDate(today.getDate() + index);
+      const date = new Date(windowStartDate);
+      date.setDate(windowStartDate.getDate() + index);
 
       const hasSchedule = scheduleEntries.some((entry) => isSameDay(entry.date, date));
 
@@ -95,12 +97,9 @@ export default function SchedulePanel({
         hasSchedule,
       };
     });
-  }, [scheduleEntries]);
+  }, [scheduleEntries, windowStartDate]);
 
-  const [selectedOffset, setSelectedOffset] = useState(0);
-
-  const clampedOffset = Math.min(selectedOffset, Math.max(days.length - 1, 0));
-  const selectedDate = days[clampedOffset]?.date ?? toDayStart(new Date());
+  const selectedDate = days[selectedOffset]?.date ?? toDayStart(new Date());
 
   const schedules = scheduleEntries
     .filter((entry) => isSameDay(entry.date, selectedDate))
@@ -111,40 +110,58 @@ export default function SchedulePanel({
 
   return (
     <section className="h-full rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <h2 className="text-base font-semibold text-gray-900">최근 일정</h2>
-
-        <Link
-          href="/sessions"
-          className="-mt-1 rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-500 hover:bg-gray-50"
-        >
-          전체 일정
-        </Link>
+        <div className="flex items-center gap-[0.4rem]">
+          <button
+            className="text-lg text-gray-300 hover:text-gray-600"
+            onClick={() =>
+              setWindowStartDate((prev) => {
+                const next = new Date(prev);
+                next.setDate(prev.getDate() - 1);
+                return next;
+              })
+            }
+            aria-label="이전 날짜"
+          >
+            ‹
+          </button>
+          <p className="text-sm font-semibold text-gray-700">
+            {`${selectedDate.getFullYear()}.${String(selectedDate.getMonth() + 1).padStart(2, "0")}`}
+          </p>
+          <button
+            className="text-lg text-gray-300 hover:text-gray-600"
+            onClick={() =>
+              setWindowStartDate((prev) => {
+                const next = new Date(prev);
+                next.setDate(prev.getDate() + 1);
+                return next;
+              })
+            }
+            aria-label="다음 날짜"
+          >
+            ›
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setWindowStartDate(toDayStart(new Date()));
+              setSelectedOffset(0);
+            }}
+            className="ml-1 inline-flex h-7 items-center justify-center rounded-md border border-gray-300 bg-white px-2 text-[11px] font-medium text-gray-700 transition hover:bg-gray-50"
+          >
+            오늘
+          </button>
+        </div>
       </div>
 
-      <div className="mb-3 flex items-center justify-center gap-4">
-        <button
-          className="text-2xl text-gray-300 hover:text-gray-600"
-          onClick={() => setSelectedOffset((prev) => Math.max(0, Math.min(prev, days.length - 1) - 1))}
-          aria-label="이전 날짜"
-        >
-          ‹
-        </button>
-        <p className="text-sm font-semibold text-gray-700">
-          {`${selectedDate.getFullYear()}.${String(selectedDate.getMonth() + 1).padStart(2, "0")}`}
-        </p>
-        <button
-          className="text-2xl text-gray-300 hover:text-gray-600"
-          onClick={() => setSelectedOffset((prev) => Math.min(days.length - 1, prev + 1))}
-          aria-label="다음 날짜"
-        >
-          ›
-        </button>
-      </div>
+      <p className="mb-4 text-sm font-semibold text-gray-700">
+        {selectedDate.getFullYear()}.{String(selectedDate.getMonth() + 1).padStart(2, "0")}.{String(selectedDate.getDate()).padStart(2, "0")}
+      </p>
 
       <div className="mb-4 grid grid-cols-7 gap-1.5">
         {days.map((item, index) => {
-          const active = index === clampedOffset;
+          const active = index === selectedOffset;
 
           return (
             <button
@@ -220,10 +237,19 @@ function StatusBadge({ status }: { status: string }) {
       ? "예정"
       : status === "COMPLETED"
       ? "완료"
-      : "진행중";
+      : "진행";
+
+  const colorClass =
+    status === "DRAFT"
+      ? "border border-gray-300 bg-transparent text-gray-600"
+      : status === "SCHEDULED"
+      ? "bg-[#DDEFF9] text-[#0688D3]"
+      : status === "COMPLETED"
+      ? "bg-gray-200 text-gray-700"
+      : "bg-[#E6ECE0] text-[#68814E]";
 
   return (
-    <span className="inline-flex whitespace-nowrap rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+    <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${colorClass}`}>
       {label}
     </span>
   );

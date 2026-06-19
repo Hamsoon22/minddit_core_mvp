@@ -21,7 +21,7 @@ import { getProgramActivityMetrics } from "@/lib/programActivityMetrics";
 const statusLabel: Record<string, string> = {
   DRAFT: "임시 저장",
   SCHEDULED: "예정",
-  ACTIVE: "진행중",
+  ACTIVE: "진행",
   COMPLETED: "완료",
 };
 
@@ -126,6 +126,8 @@ export default function SessionDetailViewPage({ params }: { params: { id: string
   const [isEditingMessage, setIsEditingMessage] = useState(false);
   const [participantModalOpen, setParticipantModalOpen] = useState(false);
   const [participantAccounts, setParticipantAccounts] = useState<ProgramParticipantAccount[]>([]);
+  const [statsModalOpen, setStatsModalOpen] = useState(false);
+  const [statsTab, setStatsTab] = useState<"activity" | "participant">("activity");
   const theme = useMemo(() => getProgramTheme(session?.themeKey), [session?.themeKey]);
   const linkBorderColor = LINK_BORDER_BY_THEME[theme.key] ?? theme.accentColor;
 
@@ -172,6 +174,71 @@ export default function SessionDetailViewPage({ params }: { params: { id: string
   const totalActivities = useMemo(
     () => Object.values(sectionActivities).flat().length,
     [sectionActivities]
+  );
+
+  const participantCount = useMemo(() => Math.max(session?._count.participants ?? 0, 0), [session]);
+
+  // 전체 참여도 = 실제 참여 건수 / (전체 참여자 수 × 전체 활동 수)
+  const participationRate = useMemo(() => {
+    const accounts = getExistingParticipantAccounts(session?.id ?? "");
+    const allActivities = Object.values(sectionActivities).flat();
+    const denominator = accounts.length * allActivities.length;
+    if (denominator === 0) return 0;
+
+    let actualParticipationCount = 0;
+    accounts.forEach((account) => {
+      allActivities.forEach((activity) => {
+        if ((metricsByActivity[activity.id]?.participantTaps[account.username] ?? 0) > 0) {
+          actualParticipationCount += 1;
+        }
+      });
+    });
+
+    return Math.round((actualParticipationCount / denominator) * 100);
+  }, [metricsByActivity, sectionActivities, session?.id]);
+
+  // 활동별 참여율
+  const activityParticipationRates = useMemo(() => {
+    const accounts = getExistingParticipantAccounts(session?.id ?? "");
+    const total = accounts.length;
+    if (total === 0) return {} as Record<string, number>;
+    const result: Record<string, number> = {};
+    const allActivities = Object.values(sectionActivities).flat();
+    allActivities.forEach((activity) => {
+      const metric = metricsByActivity[activity.id];
+      if (!metric) {
+        result[activity.id] = 0;
+        return;
+      }
+      const participated = Object.values(metric.participantTaps).filter((taps) => taps > 0).length;
+      result[activity.id] = Math.round((participated / total) * 100);
+    });
+    return result;
+  }, [metricsByActivity, sectionActivities, session?.id]);
+
+  // 참여자별 활동 참여 여부
+  const participantActivityMatrix = useMemo(() => {
+    const accounts = getExistingParticipantAccounts(session?.id ?? "");
+    const allActivities = Object.values(sectionActivities).flat();
+    return accounts.map((account) => ({
+      account,
+      activities: allActivities.map((activity) => ({
+        activityId: activity.id,
+        activityTitle: activity.title,
+        participated: (metricsByActivity[activity.id]?.participantTaps[account.username] ?? 0) > 0,
+      })),
+    }));
+  }, [metricsByActivity, sectionActivities, session?.id]);
+
+  const sectionActivityGroups = useMemo(
+    () =>
+      sections
+        .map((section) => ({
+          section,
+          activities: sectionActivities[section.id] ?? [],
+        }))
+        .filter((group) => group.activities.length > 0),
+    [sections, sectionActivities]
   );
 
   const blinkingSectionIndex = useMemo(() => {
@@ -247,7 +314,11 @@ export default function SessionDetailViewPage({ params }: { params: { id: string
     const link = `${window.location.origin}/s/${session.joinCode}`;
     const email = session.institutionEmail?.trim() || "미입력(설정 필요)";
     const phone = session.institutionPhone?.trim();
+    const address = session.institutionAddress?.trim();
+    const directions = session.institutionDirections?.trim();
     const phoneLine = phone ? `\n* 연락처: ${phone}` : "";
+    const addressLine = address ? `\n* 기관 주소: ${address}` : "";
+    const directionsLine = directions ? `\n* 오시는 길: ${directions}` : "";
     const period = `${formatDate(session.startDate)} ~ ${formatDate(session.endDate)}`;
     const roundText = session.scheduleItems?.length ? `${session.scheduleItems.length}회차` : "미정";
 
@@ -265,7 +336,7 @@ ${link}
 
 📞 문의
 기타 문의사항이 있으신 경우 아래 연락처로 문의해 주시기 바랍니다.
-* 이메일: ${email}${phoneLine}
+* 이메일: ${email}${phoneLine}${addressLine}${directionsLine}
 
 감사합니다.
 좋은 하루 보내세요. :)`;
@@ -278,7 +349,11 @@ ${link}
     const link = `${window.location.origin}/s/${session.joinCode}`;
     const email = session.institutionEmail?.trim() || "미입력(설정 필요)";
     const phone = session.institutionPhone?.trim();
+    const address = session.institutionAddress?.trim();
+    const directions = session.institutionDirections?.trim();
     const phoneLine = phone ? `\n* 연락처: ${phone}` : "";
+    const addressLine = address ? `\n* 기관 주소: ${address}` : "";
+    const directionsLine = directions ? `\n* 오시는 길: ${directions}` : "";
 
     return `[${sectionTitle}]
 안녕하세요.
@@ -294,7 +369,7 @@ ${link}
 
 📞 문의
 기타 문의사항이 있으신 경우 아래 연락처로 문의해 주시기 바랍니다.
-* 이메일: ${email}${phoneLine}
+* 이메일: ${email}${phoneLine}${addressLine}${directionsLine}
 
 감사합니다.
 좋은 하루 보내세요. :)`;
@@ -395,7 +470,9 @@ ${link}
     const fallbackCount = Math.max(session._count.participants || 0, 1);
     const accounts = getExistingParticipantAccounts(session.id);
     const accountRows = accounts.length > 0 ? accounts : getParticipantAccounts(session.id, fallbackCount);
+    const allActivities = Object.values(sectionActivities).flat();
 
+    // 기본 정보
     const headerRows: string[][] = [
       ["프로그램명", session.title],
       ["상태", statusLabel[session.status]],
@@ -403,44 +480,35 @@ ${link}
       ["기간", `${formatDate(session.startDate)} ~ ${formatDate(session.endDate)}`],
       ["참여자 수", String(session._count.participants)],
       ["활동 수", String(totalActivities)],
-      ["활동 총 탭수", String(totalActivityTaps)],
       [],
-      ["참여자", "아이디", "총 탭수"],
     ];
 
-    const participantRows = accountRows.map((account) => {
-      const totalTaps = Object.values(metricsByActivity).reduce(
-        (sum, metric) => sum + (metric.participantTaps[account.username] ?? 0),
-        0
-      );
-      return [account.name, account.username, String(totalTaps)];
+    // 활동별 현황
+    const activityStatRows: string[][] = [
+      ["[활동별 현황]"],
+      ["활동명", "참여율(%)", "참여자수", "미참여자수"],
+    ];
+    allActivities.forEach((activity) => {
+      const rate = activityParticipationRates[activity.id] ?? 0;
+      const participated = Math.round((rate / 100) * accountRows.length);
+      activityStatRows.push([
+        activity.title,
+        String(rate),
+        String(participated),
+        String(accountRows.length - participated),
+      ]);
     });
 
-    const roundRows: string[][] = [[], ["회차", "활동명", "유형", "총 탭수"]];
-    const activityColumns: { id: string; label: string }[] = [];
-
-    sections.forEach((section) => {
-      const activities = sectionActivities[section.id] ?? [];
-      activities.forEach((activity) => {
-        activityColumns.push({ id: activity.id, label: `${section.label}:${activity.title}` });
-        const metric = metricsByActivity[activity.id];
-        roundRows.push([
-          section.label,
-          activity.title,
-          getActivityTypeMeta(activity.type).label,
-          String(metric?.totalTaps ?? 0),
-        ]);
-      });
-    });
-
-    const matrixHeader = ["참여자", "아이디", ...activityColumns.map((col) => col.label)];
+    // 참여자별 현황 (O/X 매트릭스)
+    const matrixHeader = ["[참여자별 현황]", ...allActivities.map((a) => a.title)];
     const matrixRows = accountRows.map((account) => [
       account.name,
-      account.username,
-      ...activityColumns.map((col) => String(metricsByActivity[col.id]?.participantTaps[account.username] ?? 0)),
+      ...allActivities.map((activity) =>
+        (metricsByActivity[activity.id]?.participantTaps[account.username] ?? 0) > 0 ? "O" : "X"
+      ),
     ]);
 
-    const csvRows = [...headerRows, ...participantRows, ...roundRows, [], matrixHeader, ...matrixRows]
+    const csvRows = [...headerRows, ...activityStatRows, [], matrixHeader, ...matrixRows]
       .map((row) => row.map((cell) => escapeCsvCell(cell)).join(","))
       .join("\r\n");
 
@@ -575,10 +643,7 @@ ${link}
               aria-label="프로그램 안내 문자 복사"
               className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 text-xs font-bold text-gray-700 transition hover:bg-gray-100"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.8" />
-                <path d="M4 7L12 13L20 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <img src="/icon_message.svg" alt="" aria-hidden="true" className="h-[16px] w-[16px]" />
               안내
             </button>
             <div
@@ -590,7 +655,7 @@ ${link}
               style={session.linkSharingEnabled ?? true
                 ? {
                     borderColor: linkBorderColor,
-                    backgroundColor: withAlpha(theme.panelColor, 0.55),
+                    backgroundColor: withAlpha(linkBorderColor, 0.15),
                     color: theme.textColor,
                   }
                 : undefined}
@@ -601,7 +666,12 @@ ${link}
                 aria-label="프로그램 링크 복사"
                 className="inline-flex h-full items-center gap-1.5 px-2.5 font-bold transition hover:opacity-85"
               >
-                <span className="text-[14px] leading-none" aria-hidden="true">🔗</span>
+                <img
+                  src="/icon_link.svg"
+                  alt=""
+                  aria-hidden="true"
+                  className={`h-[16px] w-[16px] ${session.linkSharingEnabled ?? true ? "" : "grayscale opacity-50"}`}
+                />
                 링크
               </button>
               <span
@@ -677,24 +747,65 @@ ${link}
         </div>
       </div>
 
-      {session.status === "COMPLETED" && (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <span>참여자 <span className="font-bold">{session._count.participants}명</span></span>
-              <span>활동 <span className="font-bold">{totalActivities}개</span></span>
-              <span>탭수 <span className="font-bold">{totalActivityTaps}회</span></span>
+      {/* 핵심 운영 지표 요약 카드 */}
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="mb-3 flex items-center justify-between gap-[0.4rem]">
+          <h2 className="text-sm font-bold text-gray-700">운영 현황</h2>
+          <button
+            type="button"
+            onClick={() => { setStatsTab("activity"); setStatsModalOpen(true); }}
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
+          >
+            <img src="/icon_chart.svg" alt="" aria-hidden="true" className="h-[18px] w-[18px]" />
+            세부 통계 보기
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-lg px-3 py-3" style={{ backgroundColor: theme.accentColor }}>
+            <p className="mb-1 text-xs text-white/70">전체 참여자</p>
+            <p className="text-xl font-extrabold text-white">
+              {participantCount}
+              <span className="ml-0.5 text-sm font-medium text-white/70">명</span>
+            </p>
+          </div>
+          <div className="rounded-lg px-3 py-3" style={{ backgroundColor: theme.accentColor }}>
+            <div className="mb-1 flex items-center gap-1 text-xs text-white/70">
+              <p>전체 참여도</p>
+              <span className="group relative inline-flex h-4 w-4 items-center justify-center">
+                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-white/50 text-[10px] font-bold text-[#485763]">i</span>
+                <span className="pointer-events-none absolute -top-2 left-1/2 z-10 hidden -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-[#485763] px-2.5 py-2 text-[11px] font-medium leading-4 text-white shadow-lg group-hover:block">
+                  전체 참여도 = 실제 참여 건수 / (전체 참여자 수 × 전체 활동 수) × 100
+                </span>
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={onDownloadProgramStatsCsv}
-              className="inline-flex h-8 items-center justify-center rounded-md bg-[#417572] px-3 text-xs font-medium text-white transition hover:bg-[#356663]"
-            >
-              엑셀(.csv) 다운
-            </button>
+            <div className="flex items-center gap-2">
+              <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
+                <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="6" />
+                <circle
+                  cx="18" cy="18" r="14"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.85)"
+                  strokeWidth="6"
+                  strokeDasharray={`${(participationRate / 100) * 87.96} 87.96`}
+                  strokeLinecap="round"
+                  transform="rotate(-90 18 18)"
+                />
+              </svg>
+              <p className="text-xl font-extrabold text-white">
+                {participationRate}
+                <span className="ml-0.5 text-sm font-medium text-white/70">%</span>
+              </p>
+            </div>
+          </div>
+          <div className="rounded-lg px-3 py-3" style={{ backgroundColor: theme.accentColor }}>
+            <p className="mb-1 text-xs text-white/70">프로그램 만족도</p>
+            <p className="text-xl font-extrabold text-white">
+              -
+              <span className="ml-0.5 text-sm font-medium text-white/70">/ 5</span>
+            </p>
           </div>
         </div>
-      )}
+      </div>
 
       <div className="relative">
         <div className="absolute bottom-0 left-3 top-0 w-px bg-gray-200" aria-hidden />
@@ -719,12 +830,9 @@ ${link}
                         type="button"
                         onClick={() => openSectionMessageModal(section)}
                         aria-label={`${section.label} 안내 문자 복사`}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 transition hover:bg-gray-50"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 transition hover:bg-gray-50"
                       >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                          <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.8" />
-                          <path d="M4 7L12 13L20 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <img src="/icon_message.svg" alt="" aria-hidden="true" className="h-[16px] w-[16px]" />
                       </button>
                     </div>
                     <span className="text-sm font-medium text-gray-600">총 소요시간 <span className="font-bold">{totalMin}분</span></span>
@@ -779,6 +887,158 @@ ${link}
 
       {mounted &&
         typeof document !== "undefined" &&
+        statsModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[310] flex items-center justify-center bg-black/55 px-4">
+            <div className="flex h-[75vh] w-full max-w-2xl flex-col rounded-xl bg-white p-5 shadow-2xl">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-base font-bold text-gray-900">
+                  <img src="/icon_chart.svg" alt="" aria-hidden="true" className="h-[18px] w-[18px]" />
+                  세부 통계
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setStatsModalOpen(false)}
+                  className="-translate-y-0.5 text-[26px] font-medium leading-none text-gray-700 hover:text-gray-900"
+                  aria-label="닫기"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* 탭 */}
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStatsTab("activity")}
+                    className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${statsTab === "activity" ? "bg-[#292929] text-white" : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  >
+                    활동별 현황
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatsTab("participant")}
+                    className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${statsTab === "participant" ? "bg-[#292929] text-white" : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
+                  >
+                    참여자별 현황
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={onDownloadProgramStatsCsv}
+                  className="inline-flex items-center justify-center rounded-lg px-4 py-1.5 text-sm font-medium text-white transition hover:opacity-90"
+                  style={{ backgroundColor: theme.accentColor }}
+                >
+                  엑셀(.csv) 다운
+                </button>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-auto">
+                {statsTab === "activity" && (
+                  <div className="space-y-3">
+                    {Object.values(sectionActivities).flat().length === 0 ? (
+                      <p className="py-10 text-center text-sm text-gray-400">등록된 활동이 없습니다.</p>
+                    ) : (
+                      Object.values(sectionActivities).flat().map((activity) => {
+                        const rate = activityParticipationRates[activity.id] ?? 0;
+                        return (
+                          <div key={activity.id} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                            <div className="mb-2 flex items-center justify-between">
+                              <p className="text-sm font-semibold text-gray-900">{activity.title}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-gray-200">
+                                <div
+                                  className="absolute inset-y-0 left-0 rounded-full transition-all"
+                                  style={{ width: `${rate}%`, backgroundColor: theme.accentColor }}
+                                />
+                              </div>
+                              <div className="flex shrink-0 items-center gap-3 text-xs">
+                                <span className="font-bold text-gray-900">참여 {rate}%</span>
+                                <span className="text-gray-400">미참여 {100 - rate}%</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+
+                {statsTab === "participant" && (
+                  <div className="overflow-x-auto">
+                    {participantActivityMatrix.length === 0 ? (
+                      <p className="py-10 text-center text-sm text-gray-400">참여자 데이터가 없습니다.</p>
+                    ) : (
+                      <table className="w-full min-w-[400px] text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th
+                              rowSpan={2}
+                              className="sticky left-0 z-10 bg-gray-50 pb-2 px-3 text-center text-xs font-bold text-gray-700"
+                            >
+                              아이디
+                            </th>
+                            {sectionActivityGroups.map((group, groupIndex) => (
+                              <th
+                                key={group.section.id}
+                                colSpan={group.activities.length}
+                                className={`pb-1 px-2 text-center text-[11px] font-bold text-gray-600 ${groupIndex > 0 ? "border-l border-gray-300" : ""}`}
+                              >
+                                {group.section.label}
+                              </th>
+                            ))}
+                          </tr>
+                          <tr className="border-b border-gray-200">
+                            {sectionActivityGroups.flatMap((group, groupIndex) =>
+                              group.activities.map((activity, activityIndex) => (
+                                <th
+                                  key={activity.id}
+                                  className={`min-w-[80px] pb-2 px-2 text-center text-xs font-bold text-gray-700 leading-tight ${groupIndex > 0 && activityIndex === 0 ? "border-l border-gray-300" : ""}`}
+                                >
+                                  {activity.title}
+                                </th>
+                              ))
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {participantActivityMatrix.map(({ account }) => (
+                            <tr key={account.username}>
+                              <td className="sticky left-0 z-10 bg-gray-50 px-3 py-2.5 text-center text-xs font-medium text-gray-700">{account.username}</td>
+                              {sectionActivityGroups.flatMap((group, groupIndex) =>
+                                group.activities.map((activity, activityIndex) => {
+                                  const participated = (metricsByActivity[activity.id]?.participantTaps[account.username] ?? 0) > 0;
+                                  return (
+                                    <td
+                                      key={`${account.username}-${activity.id}`}
+                                      className={`px-2 py-2.5 text-center ${groupIndex > 0 && activityIndex === 0 ? "border-l border-gray-300" : ""}`}
+                                    >
+                                      {participated ? (
+                                        <span className="text-base font-bold text-green-600">O</span>
+                                      ) : (
+                                        <span className="text-base font-bold text-red-400">X</span>
+                                      )}
+                                    </td>
+                                  );
+                                })
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {mounted &&
+        typeof document !== "undefined" &&
         messageModal &&
         createPortal(
           <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/55 px-4">
@@ -828,9 +1088,9 @@ ${link}
                   className="h-[360px] w-full resize-none rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 outline-none focus:border-gray-400"
                 />
               ) : (
-                <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
-{messageModal.text}
-                </pre>
+                <div className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-700">
+                  {messageModal.text}
+                </div>
               )}
             </div>
           </div>,

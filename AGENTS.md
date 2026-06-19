@@ -47,6 +47,11 @@ DB/환경 설정 체크리스트: [docs/db-setup-later-checklist.md](docs/db-set
 - 문서가 이미 있으면 중복 작성 대신 링크합니다.
 - mock/localStorage 의존 로직과 DB 연동 로직을 혼동하지 않습니다.
 
+## 검증 원칙
+- 변경을 마무리할 때는 커밋 여부와 무관하게 `npm run build`로 최종 검증을 먼저 합니다.
+- Prisma 스키마나 DB 연동을 바꾸면 `npm run build`와 함께 `npm run db:push` 가능 여부를 확인합니다.
+- 빌드나 설정 검증에 필요한 세부 절차는 [docs/db-setup-later-checklist.md](docs/db-setup-later-checklist.md)와 관련 문서를 우선 참고합니다.
+
 ## 참고 문서
 - [docs/program-management-mvp-spec.md](docs/program-management-mvp-spec.md)
 - [docs/mvp-phase-plan.md](docs/mvp-phase-plan.md)
