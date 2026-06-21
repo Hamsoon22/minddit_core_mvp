@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { mockSessions } from "@/lib/mock";
 import Link from "next/link";
 
@@ -9,11 +10,21 @@ export default function ParticipantsPage() {
   return (
     <div>
       <div className="dashboard-sticky-header mb-6 flex items-center justify-between gap-4">
-        <div>
+        <div className="flex items-start gap-3">
+          <Image
+            src="/icon_program.png"
+            alt=""
+            width={48}
+            height={48}
+            className="mt-0.5 h-12 w-12 shrink-0 object-contain"
+            aria-hidden="true"
+          />
+          <div>
           <h1 className="text-[1.7rem] font-bold text-gray-900">참여자 관리</h1>
           <p className="mt-0.5 text-sm text-gray-500">
             참여자 현황과 참여 상태를 확인하고 관리하세요.
           </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">

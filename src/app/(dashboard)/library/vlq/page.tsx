@@ -290,6 +290,21 @@ export default function VLQPage() {
     reset();
   }
 
+  function notifyCtaEngaged() {
+    if (typeof window === "undefined") return;
+    if (window.parent === window) return;
+    window.parent.postMessage({ type: "minddit-activity-cta", action: "result" }, "*");
+  }
+
+  function onNextOrSubmit() {
+    if (step === 1) {
+      setStep(2);
+      return;
+    }
+    notifyCtaEngaged();
+    setStep(3);
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* ── Top nav ── */}
@@ -419,7 +434,7 @@ export default function VLQPage() {
             {/* ── Next button ── */}
             <button
               type="button"
-              onClick={() => setStep(step === 1 ? 2 : 3)}
+              onClick={onNextOrSubmit}
               className="mt-6 w-full rounded-xl bg-gray-900 py-3.5 text-sm font-medium text-white transition hover:opacity-85"
             >
               {step === 2 ? t.submit : t.next}

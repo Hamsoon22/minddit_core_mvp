@@ -15,6 +15,9 @@ import type { ProgramThemeKey } from "@/types/session";
 
 const DRAFT_CREATE_GUARD_KEY = "mindflow.new-session-create-guard";
 const DRAFT_CREATED_ID_KEY = "mindflow.new-session-created-id";
+const SETUP_STEP_KEY_PREFIX = "mindflow.session-setup-step";
+
+type SetupStep = "basic" | "rounds";
 
 type DraftScheduleItem = {
   id: string;
@@ -159,6 +162,34 @@ function MonthPickerRow({
   );
 }
 
+function RoundCountPicker({ value, onChange, accentColor }: { value: number; onChange: (next: number) => void; accentColor?: string }) {
+  return (
+    <div className="inline-flex items-center overflow-hidden rounded-xl border border-gray-200">
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(1, value - 1))}
+        className="h-11 w-11 text-xl font-bold text-[#292929] bg-white transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
+        disabled={value <= 1}
+        aria-label="회차 줄이기"
+      >
+        -
+      </button>
+      <div className="flex h-11 w-14 items-center justify-center" style={{ backgroundColor: accentColor ?? "#292929" }}>
+        <span className="text-xl font-extrabold text-white">{value}</span>
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange(Math.min(12, value + 1))}
+        className="h-11 w-11 text-xl font-bold text-[#292929] bg-white transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
+        disabled={value >= 12}
+        aria-label="회차 늘리기"
+      >
+        +
+      </button>
+    </div>
+  );
+}
+
 function blankItem(): DraftScheduleItem {
   return {
     id: `draft-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -202,7 +233,7 @@ function toLocalScheduleItems(
     if (scheduleType === "WEEKLY") {
       return {
         id: item.id,
-        label: `${index + 1}주차`,
+        label: `${index + 1}회차`,
         weekStart: item.weekStart,
         weekEnd: item.weekEnd,
       };
@@ -210,7 +241,7 @@ function toLocalScheduleItems(
 
     return {
       id: item.id,
-      label: `${item.year}.${item.month}`,
+      label: `${index + 1}회차`,
       year: Number(item.year),
       month: Number(item.month),
     };
@@ -364,6 +395,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
   const [scheduleType, setScheduleType] = useState<ScheduleType>("DATE_SPECIFIC");
   const [scheduleItems, setScheduleItems] = useState<DraftScheduleItem[]>([blankItem()]);
   const [themeKey, setThemeKey] = useState<ProgramThemeKey>("slate");
+  const [setupStep, setSetupStep] = useState<SetupStep>("basic");
 
   useEffect(() => {
     const found = getProgramSessionById(params.id);
@@ -382,6 +414,13 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
     setStartDate(toDateInput(found?.startDate));
     setEndDate(toDateInput(found?.endDate));
     setThemeKey(getProgramTheme(found?.themeKey).key);
+
+    if (found?.status === "DRAFT") {
+      const storedStep = window.sessionStorage.getItem(`${SETUP_STEP_KEY_PREFIX}.${found.id}`);
+      setSetupStep(storedStep === "rounds" ? "rounds" : "basic");
+    } else {
+      setSetupStep("basic");
+    }
 
     const nextType = (found?.scheduleType ?? "DATE_SPECIFIC") as ScheduleType;
     setScheduleType(nextType);
@@ -414,6 +453,11 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
   }, []);
 
   useEffect(() => {
+    if (!session || session.status !== "DRAFT") return;
+    window.sessionStorage.setItem(`${SETUP_STEP_KEY_PREFIX}.${session.id}`, setupStep);
+  }, [session?.id, session?.status, setupStep]);
+
+  useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (expertDropdownRef.current && !expertDropdownRef.current.contains(e.target as Node)) {
         setExpertDropdownOpen(false);
@@ -428,6 +472,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
   }, []);
 
   const invalidRange = Boolean(startDate && endDate && new Date(startDate) > new Date(endDate));
+  const canProceedBasic = title.trim().length > 0 && selectedExperts.length > 0 && Boolean(startDate) && Boolean(endDate) && !invalidRange;
 
   useEffect(() => {
     if (!session) return;
@@ -469,8 +514,18 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
     [scheduleItems, scheduleType]
   );
 
-  const setupTitle = session?.status === "DRAFT" ? "프로그램 생성" : "프로그램 편집";
-  const setupActionLabel = session?.status === "DRAFT" ? "프로그램 생성" : "프로그램 저장";
+  const isCreationFlow = session?.status === "DRAFT";
+  const isBasicStep = isCreationFlow && setupStep === "basic";
+  const setupTitle = isCreationFlow
+    ? setupStep === "basic"
+      ? "프로그램 생성(기본)"
+      : "프로그램 생성(회차)"
+    : "프로그램 편집";
+  const setupActionLabel = isCreationFlow
+    ? setupStep === "basic"
+      ? "다음으로"
+      : "프로그램 생성"
+    : "프로그램 저장";
   const selectedTheme = getProgramTheme(themeKey);
 
   const hasScheduleRangeViolation =
@@ -491,9 +546,10 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
     Boolean(startDate) &&
     Boolean(endDate) &&
     !invalidRange &&
-    !hasScheduleRangeViolation &&
-    scheduleItems.length > 0 &&
-    scheduleItems.every((item) => isItemValid(item, scheduleType));
+    scheduleItems.length > 0;
+
+  // For creation flow's rounds step, only need schedule count
+  const canCreateInRoundsStep = isCreationFlow && setupStep === "rounds" ? scheduleItems.length > 0 : canCreate;
 
   function onAddScheduleItem() {
     setScheduleItems((prev) =>
@@ -509,6 +565,26 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
         }
       )
     );
+  }
+
+  function onChangeScheduleCount(nextCount: number) {
+    const safeCount = Math.max(1, Math.min(12, Math.floor(nextCount)));
+    setScheduleItems((prev) => {
+      const nextItems = [...prev];
+      if (safeCount > nextItems.length) {
+        while (nextItems.length < safeCount) {
+          nextItems.push(blankItem());
+        }
+      } else {
+        nextItems.length = safeCount;
+      }
+
+      return syncItemsWithRange(nextItems, scheduleType, startDate, endDate, {
+        syncStartBoundary: true,
+        syncEndBoundary: true,
+        clearMiddleBoundaries: true,
+      });
+    });
   }
 
   function onRemoveScheduleItem(id: string) {
@@ -592,6 +668,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
 
     if (session.status === "DRAFT") {
       deleteProgramSession(session.id);
+      window.sessionStorage.removeItem(`${SETUP_STEP_KEY_PREFIX}.${session.id}`);
       window.dispatchEvent(
         new CustomEvent("minddit:toast", {
           detail: { message: "삭제되었습니다.", tone: "error" },
@@ -605,9 +682,63 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
   }
 
   function onCreateProgram() {
-    if (!session || !canCreate) return;
+    if (!session) return;
 
     const isDraft = session.status === "DRAFT";
+
+    // Auto-fill empty schedule items for creation flow
+    let finalScheduleItems = scheduleItems;
+    if (isDraft && scheduleItems.length > 0) {
+      finalScheduleItems = scheduleItems.map((item, index) => {
+        if (isItemValid(item, scheduleType)) {
+          return item;
+        }
+
+        // Auto-fill based on schedule type
+        if (scheduleType === "DATE_SPECIFIC") {
+          if (!item.date && startDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate || startDate);
+            const dayRange = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+            const daysPerRound = Math.max(1, Math.floor(dayRange / scheduleItems.length));
+            const itemDate = new Date(start.getTime() + daysPerRound * index * 1000 * 60 * 60 * 24);
+            return {
+              ...item,
+              date: itemDate.toISOString().slice(0, 10),
+            };
+          }
+        } else if (scheduleType === "WEEKLY") {
+          if (!item.weekStart && startDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate || startDate);
+            const weekRange = Math.ceil((end.getTime() - start.getTime()) / (7 * 1000 * 60 * 60 * 24));
+            const weeksPerRound = Math.max(1, Math.floor(weekRange / scheduleItems.length));
+            const itemStart = new Date(start.getTime() + weeksPerRound * index * 7 * 1000 * 60 * 60 * 24);
+            const itemEnd = new Date(itemStart.getTime() + (weeksPerRound - 1) * 7 * 1000 * 60 * 60 * 24);
+            return {
+              ...item,
+              weekStart: itemStart.toISOString().slice(0, 10),
+              weekEnd: itemEnd.toISOString().slice(0, 10),
+            };
+          }
+        } else if (scheduleType === "MONTHLY") {
+          if (!item.year && startDate) {
+            const [startYear, startMonth] = startDate.split("-");
+            const monthIndex = index;
+            const totalMonths = parseInt(startMonth, 10) + monthIndex;
+            const year = parseInt(startYear, 10) + Math.floor((totalMonths - 1) / 12);
+            const month = ((totalMonths - 1) % 12) + 1;
+            return {
+              ...item,
+              year: String(year),
+              month: String(month).padStart(2, "0"),
+            };
+          }
+        }
+
+        return item;
+      });
+    }
 
     updateProgramSession(session.id, {
       title: title.trim(),
@@ -618,7 +749,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
       endDate: new Date(endDate),
       scheduledAt: new Date(startDate),
       scheduleType,
-      scheduleItems: toLocalScheduleItems(scheduleItems, scheduleType),
+      scheduleItems: toLocalScheduleItems(finalScheduleItems, scheduleType),
       status: isDraft ? "SCHEDULED" : session.status,
     });
 
@@ -628,7 +759,19 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
       })
     );
 
+    window.sessionStorage.removeItem(`${SETUP_STEP_KEY_PREFIX}.${session.id}`);
+
     router.push(isDraft ? `/sessions/${session.id}/builder` : `/sessions/${session.id}`);
+  }
+
+  function onPrimaryAction() {
+    if (!session) return;
+    if (isCreationFlow && setupStep === "basic") {
+      if (!canProceedBasic) return;
+      setSetupStep("rounds");
+      return;
+    }
+    onCreateProgram();
   }
 
   if (!session) {
@@ -666,10 +809,19 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
           >
             취소
           </button>
+          {isCreationFlow && setupStep === "rounds" && (
+            <button
+              type="button"
+              onClick={() => setSetupStep("basic")}
+              className="inline-flex h-10 items-center justify-center rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            >
+              이전으로
+            </button>
+          )}
           <button
             type="button"
-            onClick={onCreateProgram}
-            disabled={!canCreate}
+            onClick={onPrimaryAction}
+            disabled={isCreationFlow && setupStep === "basic" ? !canProceedBasic : !canCreateInRoundsStep}
             className="inline-flex h-10 items-center justify-center rounded-lg bg-[#292929] px-4 text-sm font-medium text-white transition hover:bg-[#1f1f1f] disabled:opacity-50"
           >
             {setupActionLabel}
@@ -702,7 +854,9 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
             })}
           </div>
         </div>
-        {displayItems.length > 0 ? (
+        {isBasicStep ? (
+          <p className="text-sm font-medium" style={{ color: selectedTheme.textColor, opacity: 0.9 }}>*기본 정보를 입력한 뒤 다음으로 넘어가면 회차를 설정할 수 있습니다.</p>
+        ) : displayItems.length > 0 ? (
           <div className="space-y-1.5">
             {displayItems.map((item, index) => (
               <div
@@ -724,7 +878,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
         )}
       </div>
 
-      <div className="mb-6 space-y-4">
+      <div className={`mb-6 space-y-4 ${isCreationFlow && setupStep === "rounds" ? "hidden" : ""}`}>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
             <label className="mb-2 block text-sm font-bold text-gray-700">
@@ -785,7 +939,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-bold text-gray-700">설명</label>
+            <label className="mb-2 block text-sm font-bold text-gray-700">프로그램 설명</label>
             <textarea
               rows={3}
               value={description}
@@ -852,7 +1006,7 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
 
         <div>
           <label className="mb-2 block text-sm font-bold text-gray-700">
-            프로그램 일정 <span className="text-red-500">*</span>
+            프로그램 전체 기간 <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <DatePickerRow
@@ -872,121 +1026,123 @@ export default function SessionSetupPage({ params }: { params: { id: string } })
         </div>
       </div>
 
-      <div className="my-10 border-t border-gray-200" />
+      {!isBasicStep && (
+        <>
+          <div className="my-10 border-t border-gray-200" />
 
-      <div className="mb-6 space-y-4">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-bold text-gray-900">{setupTitle} ({scheduleItems.length}개)</h2>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <p className="text-sm font-bold text-gray-700">{SCHEDULE_TYPE_LABEL[scheduleType]} 섹션</p>
-              <div className="flex items-center gap-2">
-                {(Object.keys(SCHEDULE_TYPE_LABEL) as ScheduleType[]).map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => onChangeScheduleType(type)}
-                    className={
-                      scheduleType === type
-                        ? "rounded-lg px-3 py-1.5 text-xs font-medium text-white"
-                        : "rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                    }
-                    style={scheduleType === type ? { backgroundColor: selectedTheme.accentColor } : undefined}
-                  >
-                    {SCHEDULE_TYPE_LABEL[type]}
-                  </button>
-                ))}
+          <div className="mb-6 space-y-4">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-[1.7rem] font-bold text-gray-900">우리 프로그램은</span>
+                  <RoundCountPicker value={scheduleItems.length} onChange={onChangeScheduleCount} accentColor={selectedTheme.accentColor} />
+                  <span className="text-[1.7rem] font-bold text-gray-900">회차 프로그램입니다.</span>
+                </div>
+                <h2 className="text-base font-bold text-gray-900">프로그램 중 ({scheduleItems.length}회차)</h2>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={onAddScheduleItem}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-lg leading-none text-white transition hover:opacity-95"
-              style={{ backgroundColor: selectedTheme.accentColor }}
-              aria-label="섹션 추가"
-            >
-              <span className="-translate-y-[1px]">+</span>
-            </button>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    {(Object.keys(SCHEDULE_TYPE_LABEL) as ScheduleType[]).map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => onChangeScheduleType(type)}
+                        className={
+                          scheduleType === type
+                            ? "rounded-lg px-3 py-1.5 text-xs font-medium text-white"
+                            : "rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                        }
+                        style={scheduleType === type ? { backgroundColor: selectedTheme.accentColor } : undefined}
+                      >
+                        {SCHEDULE_TYPE_LABEL[type]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {scheduleItems.map((item, index) => (
+                <div key={item.id} className="rounded-lg border border-gray-200 bg-white p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xs font-medium text-gray-500">{index + 1}회차</p>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveScheduleItem(item.id)}
+                      className="rounded-md border border-red-300 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-100 disabled:opacity-40"
+                      disabled={scheduleItems.length <= 1}
+                    >
+                      -
+                    </button>
+                  </div>
+
+                  {scheduleType === "DATE_SPECIFIC" && (
+                    <div>
+                      <DatePickerRow
+                        label="일자"
+                        value={item.date}
+                        onChange={(next) => onChangeScheduleItem(item.id, { date: next })}
+                        min={index === 0 ? undefined : startDate || undefined}
+                        max={endDate || undefined}
+                      />
+                    </div>
+                  )}
+
+                  {scheduleType === "WEEKLY" && (
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                      <div>
+                        <DatePickerRow
+                          label="시작일"
+                          value={item.weekStart}
+                          onChange={(next) => onChangeScheduleItem(item.id, { weekStart: next })}
+                          min={index === 0 ? undefined : startDate || undefined}
+                          max={endDate || undefined}
+                        />
+                      </div>
+                      <div>
+                        <DatePickerRow
+                          label="종료일"
+                          value={item.weekEnd}
+                          onChange={(next) => onChangeScheduleItem(item.id, { weekEnd: next })}
+                          min={startDate || undefined}
+                          max={endDate || undefined}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {scheduleType === "MONTHLY" && (
+                    <div>
+                      <MonthPickerRow
+                        label="월별"
+                        value={monthValueFromItem(item)}
+                        onChange={(next) => {
+                          const [year, month] = next.split("-");
+                          onChangeScheduleItem(item.id, {
+                            year: year || "",
+                            month: month || "",
+                          });
+                        }}
+                        min={index === 0 ? undefined : startDate ? startDate.slice(0, 7) : undefined}
+                        max={endDate ? endDate.slice(0, 7) : undefined}
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {hasScheduleRangeViolation && (
+                <p className="text-xs font-medium text-red-500">프로그램 기간을 벗어난 회차는 저장할 수 없습니다.</p>
+              )}
+            </div>
           </div>
+        </>
+      )}
 
-          {scheduleItems.map((item, index) => (
-            <div key={item.id} className="rounded-lg border border-gray-200 bg-white p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-xs font-medium text-gray-500">{index + 1}번째 섹션</p>
-                <button
-                  type="button"
-                  onClick={() => onRemoveScheduleItem(item.id)}
-                  className="rounded-md border border-red-300 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-100 disabled:opacity-40"
-                  disabled={scheduleItems.length <= 1}
-                >
-                  -
-                </button>
-              </div>
-
-              {scheduleType === "DATE_SPECIFIC" && (
-                <div>
-                  <DatePickerRow
-                    label="일자"
-                    value={item.date}
-                    onChange={(next) => onChangeScheduleItem(item.id, { date: next })}
-                    min={index === 0 ? undefined : startDate || undefined}
-                    max={endDate || undefined}
-                  />
-                </div>
-              )}
-
-              {scheduleType === "WEEKLY" && (
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                  <div>
-                    <DatePickerRow
-                      label="시작일"
-                      value={item.weekStart}
-                      onChange={(next) => onChangeScheduleItem(item.id, { weekStart: next })}
-                      min={index === 0 ? undefined : startDate || undefined}
-                      max={endDate || undefined}
-                    />
-                  </div>
-                  <div>
-                    <DatePickerRow
-                      label="종료일"
-                      value={item.weekEnd}
-                      onChange={(next) => onChangeScheduleItem(item.id, { weekEnd: next })}
-                      min={startDate || undefined}
-                      max={endDate || undefined}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {scheduleType === "MONTHLY" && (
-                <div>
-                  <MonthPickerRow
-                    label="월별"
-                    value={monthValueFromItem(item)}
-                    onChange={(next) => {
-                      const [year, month] = next.split("-");
-                      onChangeScheduleItem(item.id, {
-                        year: year || "",
-                        month: month || "",
-                      });
-                    }}
-                    min={index === 0 ? undefined : startDate ? startDate.slice(0, 7) : undefined}
-                    max={endDate ? endDate.slice(0, 7) : undefined}
-                  />
-                </div>
-              )}
-            </div>
-          ))}
-
-          {hasScheduleRangeViolation && (
-            <p className="text-xs font-medium text-red-500">프로그램 기간을 벗어난 일정은 저장할 수 없습니다.</p>
-          )}
-        </div>
-
-      </div>
+      
 
     </div>
   );

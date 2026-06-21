@@ -33,6 +33,9 @@ export default function JournalPage() {
 
   function handleSave() {
     if (text.trim().length === 0) return;
+    if (typeof window !== "undefined" && window.parent !== window) {
+      window.parent.postMessage({ type: "minddit-activity-cta", action: "save" }, "*");
+    }
     setSaved(true);
   }
 

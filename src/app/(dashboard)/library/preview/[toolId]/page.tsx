@@ -108,35 +108,20 @@ export default function LibraryMobilePreviewPage({
             <p>프로그램 참여자가 링크를 통해 보는 활동 페이지 미리보기입니다.</p>
           </div>
 
-          <div className="overflow-hidden rounded-[24px] border border-gray-200 bg-white shadow-sm">
-          <div className="px-4 pb-5 pt-6" style={{ backgroundColor: headerBgColor }}>
-            <h2 className="text-xl font-extrabold leading-tight text-[#101828]">{tool.title}</h2>
-            <p className="mt-1 text-sm leading-6 text-[#4b5563]">{tool.description}</p>
-          </div>
+          <div className="overflow-hidden rounded-[24px] border border-[#292929] bg-white shadow-sm">
+            <div className="px-4 pb-5 pt-6" style={{ backgroundColor: headerBgColor }}>
+              <h2 className="text-xl font-extrabold leading-tight text-[#101828]">{tool.title}</h2>
+              <p className="mt-1 text-sm leading-6 text-[#4b5563]">{tool.description}</p>
+            </div>
 
-          <div className="px-4 py-4">
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+            <div className="px-4 py-4">
               <iframe
                 title={`${tool.title} 미리보기`}
                 src={`${tool.href}?embed=1`}
-                className="h-[812px] w-full"
+                className="h-[812px] w-full overflow-hidden rounded-xl border-0 bg-white"
               />
             </div>
           </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="pointer-events-none fixed bottom-[54px] left-1/2 z-[315] w-full max-w-[430px] -translate-x-1/2 px-[36px]">
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#292929] text-white shadow-lg transition hover:opacity-90"
-            aria-label="맨 위로 이동"
-          >
-            ↑
-          </button>
         </div>
       </div>
     </div>

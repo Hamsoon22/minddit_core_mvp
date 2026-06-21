@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
@@ -7,6 +8,7 @@ import {
   deleteProgramSession,
   getProgramDateSummary,
   getProgramSessions,
+  resetProgramSessionsToSeed,
   type ProgramSession,
 } from "@/lib/programSessions";
 import type { ProgramMode } from "@/types/session";
@@ -14,7 +16,7 @@ import { getActivityTypeMeta } from "@/lib/contentCatalog";
 import { getProgramActivityMetrics } from "@/lib/programActivityMetrics";
 import { getExistingParticipantAccounts, getParticipantAccounts } from "@/lib/programParticipantAccounts";
 
-const statusLabel: Record<string, string> = { DRAFT: "임시 저장", SCHEDULED: "예정", ACTIVE: "진행중", COMPLETED: "완료" };
+const statusLabel: Record<string, string> = { DRAFT: "임시 저장", SCHEDULED: "예정", ACTIVE: "진행", COMPLETED: "완료" };
 const statusColor: Record<string, string> = {
   DRAFT: "border border-gray-300 bg-transparent text-gray-600",
   SCHEDULED: "bg-[#DDEFF9] text-[#0688D3]",
@@ -174,7 +176,16 @@ export default function SessionsPage() {
   }, [sessions]);
 
   useEffect(() => {
-    setSessions(getProgramSessions());
+    try {
+      const loaded = getProgramSessions();
+      if (loaded.length > 0) {
+        setSessions(loaded);
+      } else {
+        setSessions(resetProgramSessionsToSeed());
+      }
+    } catch {
+      setSessions(resetProgramSessionsToSeed());
+    }
 
     try {
       const raw = window.localStorage.getItem(GUIDE_MESSAGE_STORAGE_KEY);
@@ -217,8 +228,12 @@ export default function SessionsPage() {
     const link = `${window.location.origin}/s/${session.joinCode}`;
     const email = session.institutionEmail?.trim() || "미입력(설정 필요)";
     const phone = session.institutionPhone?.trim();
+    const address = session.institutionAddress?.trim();
+    const directions = session.institutionDirections?.trim();
 
     const phoneLine = phone ? `\n* 연락처: ${phone}` : "";
+    const addressLine = address ? `\n* 기관 주소: ${address}` : "";
+    const directionsLine = directions ? `\n* 오시는 길: ${directions}` : "";
 
     return `[${programName}]
 안녕하세요.
@@ -234,7 +249,7 @@ ${link}
 
 📞 문의
 기타 문의사항이 있으신 경우 아래 연락처로 문의해 주시기 바랍니다.
-* 이메일: ${email}${phoneLine}
+* 이메일: ${email}${phoneLine}${addressLine}${directionsLine}
 
 감사합니다.
 좋은 하루 보내세요. :)`;
@@ -310,40 +325,19 @@ ${link}
   return (
     <div>
       <div className="dashboard-sticky-header-compact mb-0 flex items-center justify-between">
-        <div>
+        <div className="flex items-center gap-3">
+          <Image
+            src="/icon_program.png"
+            alt=""
+            width={48}
+            height={48}
+            className="h-12 w-12 shrink-0 object-contain"
+            aria-hidden="true"
+          />
           <h1 className="text-[1.7rem] font-bold text-gray-900">프로그램 관리</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label="알림"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-700"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                d="M15 17H9M17 8C17 6.67392 16.4732 5.40215 15.5355 4.46447C14.5979 3.52678 13.3261 3 12 3C10.6739 3 9.40215 3.52678 8.46447 4.46447C7.52678 5.40215 7 6.67392 7 8C7 10.5772 6.34829 12.2684 5.62047 13.3333C5.00778 14.2296 4.70144 14.6777 4.7118 14.8023C4.72328 14.9405 4.75253 14.9936 4.86071 15.0804C4.95822 15.1586 5.45062 15.1586 6.43542 15.1586H17.5646C18.5494 15.1586 19.0418 15.1586 19.1393 15.0804C19.2475 14.9936 19.2767 14.9405 19.2882 14.8023C19.2986 14.6777 18.9922 14.2296 18.3795 13.3333C17.6517 12.2684 17 10.5772 17 8Z"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M13.73 21C13.5542 21.3031 13.3018 21.5546 12.9982 21.7295C12.6946 21.9044 12.3503 21.9966 12 21.9966C11.6497 21.9966 11.3054 21.9044 11.0018 21.7295C10.6982 21.5546 10.4458 21.3031 10.27 21"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
 
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => downloadSessionsCsv(sortedSessions)}
@@ -396,23 +390,25 @@ ${link}
                 aria-label="프로그램 안내 메세지"
                 className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 transition hover:bg-gray-100"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.8" />
-                  <path d="M4 7L12 13L20 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <img src="/icon_message.svg" alt="" aria-hidden="true" className="h-[18px] w-[18px]" />
               </button>
               <button
                 type="button"
                 onClick={() => onCopyProgramLink(s)}
                 aria-label="프로그램 링크 복사"
-                  disabled={!(s.linkSharingEnabled ?? true)}
-                  className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md transition ${
-                    s.linkSharingEnabled ?? true
-                      ? "border border-gray-300 bg-white text-gray-600 hover:bg-gray-100"
-                      : "border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
-                  }`}
+                disabled={!(s.linkSharingEnabled ?? true)}
+                className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md transition ${
+                  s.linkSharingEnabled ?? true
+                    ? "border border-gray-300 bg-white text-gray-600 hover:bg-gray-100"
+                    : "border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+                }`}
               >
-                <span className="text-[18px] leading-none" aria-hidden="true">🔗</span>
+                <img
+                  src="/icon_link.svg"
+                  alt=""
+                  aria-hidden="true"
+                  className={`h-[18px] w-[18px] ${s.linkSharingEnabled ?? true ? "" : "grayscale opacity-50"}`}
+                />
               </button>
               <Link href={`/sessions/${s.id}`} className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -495,9 +491,9 @@ ${link}
                   className="h-[360px] w-full resize-none rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 outline-none focus:border-gray-400"
                 />
               ) : (
-                <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
-{messageDraft}
-                </pre>
+                <div className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-700">
+                  {messageDraft}
+                </div>
               )}
             </div>
           </div>,

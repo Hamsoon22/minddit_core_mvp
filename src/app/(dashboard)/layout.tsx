@@ -25,11 +25,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <>
-      <div className="hidden h-screen items-center justify-center bg-gray-50 px-6 text-center max-[1350px]:flex">
-        <p className="text-lg font-semibold text-gray-700">PC로 접속해주세요.</p>
+      <div className="hidden border-b border-gray-200 bg-gray-50 px-6 py-3 text-center text-sm font-semibold text-gray-700 max-[1350px]:block">
+        PC에서 보는 것이 가장 좋습니다.
       </div>
 
-      <div className="flex h-screen overflow-hidden bg-gray-50 max-[1350px]:hidden">
+      <div className="flex h-screen overflow-hidden bg-gray-50">
         <Sidebar user={{ name: "서윤희", organization: "마인딧센터" }} />
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-6xl px-6 pb-24 pt-8">

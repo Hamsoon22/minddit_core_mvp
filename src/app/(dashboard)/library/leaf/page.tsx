@@ -18,6 +18,9 @@ export default function LeafMeditationPage() {
     const vid = videoRef.current;
     if (!vid) return;
     if (vid.paused) {
+      if (typeof window !== "undefined" && window.parent !== window) {
+        window.parent.postMessage({ type: "minddit-activity-cta", action: "play" }, "*");
+      }
       vid.play();
       setPlaying(true);
     } else {

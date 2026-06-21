@@ -11,11 +11,11 @@ const LOCAL_SETTINGS_KEY = "minddit.settings.local.v1";
 const LOCAL_ACCOUNT_KEY = "minddit.account.local.v1";
 
 const NAV = [
-  { href: "/dashboard", label: "홈" },
-  { href: "/sessions", label: "프로그램 관리" },
+  { href: "/dashboard", label: "홈", iconSrc: "/icon_home.png" },
+  { href: "/sessions", label: "프로그램 관리", iconSrc: "/icon_program.png" },
   // { href: "/participants", label: "참여자 관리" },
-  { href: "/library", label: "콘텐츠 관리" },
-  { href: "/settings", label: "설정 관리" },
+  { href: "/library", label: "콘텐츠 관리", iconSrc: "/icon_contents.png" },
+  { href: "/settings", label: "설정 관리", iconSrc: "/icon_setting.png" },
 ];
 
 export default function Sidebar({
@@ -99,7 +99,7 @@ export default function Sidebar({
 
       <nav className="flex-1 px-4 py-4">
         <div className="space-y-2">
-          {NAV.map(({ href, label }) => {
+          {NAV.map(({ href, label, iconSrc }) => {
             const active =
               href === "/" ? pathname === "/" : pathname.startsWith(href);
 
@@ -108,13 +108,21 @@ export default function Sidebar({
                 key={href}
                 href={href}
                 className={cn(
-                  "block text-[19px] rounded-xl px-5 py-3 transition-colors",
+                  "flex items-center gap-3 rounded-xl px-5 py-3 transition-colors",
                   active
                     ? "bg-gray-200 text-gray-900 font-bold"
                     : "text-gray-500 hover:text-gray-700"
                 )}
               >
-                {label}
+                <Image
+                  src={iconSrc}
+                  alt=""
+                  width={36}
+                  height={36}
+                  className="h-9 w-9 shrink-0 object-contain"
+                  aria-hidden="true"
+                />
+                <span className="text-[19px]">{label}</span>
               </Link>
             );
           })}

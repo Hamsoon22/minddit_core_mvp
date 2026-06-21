@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 const DEFAULT_CENTER_NAME = "마인딧센터";
@@ -224,6 +225,15 @@ export default function SettingsPage() {
     setForm((prev) => ({ ...prev, address: next.trim() }));
   }
 
+  function onRemoveProfileImage() {
+    setAccountForm((prev) => {
+      const next = { ...prev, profileImage: "" };
+      window.localStorage.setItem(LOCAL_ACCOUNT_KEY, JSON.stringify(next));
+      window.dispatchEvent(new Event("minddit:profile-updated"));
+      return next;
+    });
+  }
+
   function tabClass(tab: SettingsTab) {
     return activeTab === tab
       ? "w-full rounded-lg bg-[#485763] px-4 py-3 text-left text-sm font-semibold text-white"
@@ -233,7 +243,17 @@ export default function SettingsPage() {
   return (
     <div>
       <div className="dashboard-sticky-header-compact flex items-center justify-between gap-4">
-        <h1 className="text-[1.7rem] font-bold text-gray-900">설정</h1>
+        <div className="flex items-center gap-3">
+          <Image
+            src="/icon_setting.png"
+            alt=""
+            width={48}
+            height={48}
+            className="h-12 w-12 shrink-0 object-contain"
+            aria-hidden="true"
+          />
+          <h1 className="text-[1.7rem] font-bold text-gray-900">설정</h1>
+        </div>
 
         <button
           onClick={onSave}
@@ -245,7 +265,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="mt-0.5 space-y-6">
-        <p className="text-sm text-gray-500">시스템 및 계정 설정을 관리합니다.</p>
+        <p className="text-sm text-gray-500">시스템 및 계정 설정을 관리하세요.</p>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[240px_1fr]">
         <aside>
@@ -364,7 +384,7 @@ export default function SettingsPage() {
                       {accountForm.profileImage ? (
                         <img src={accountForm.profileImage} alt="profile" className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">no image</div>
+                        <img src="/profile-avatar.svg" alt="no image" className="h-full w-full object-cover" />
                       )}
                     </div>
                     <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border border-gray-300 bg-white px-4 text-sm text-gray-700 hover:bg-gray-50">
@@ -390,6 +410,18 @@ export default function SettingsPage() {
                         }}
                       />
                     </label>
+                    <button
+                      type="button"
+                      onClick={onRemoveProfileImage}
+                      disabled={!accountForm.profileImage}
+                      aria-label="이미지 삭제"
+                      className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
 
